@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "gen-lang-client-0030917104",
+  "private_key_id": "857db81367f51ddb6daf9f6d238a76458429af12",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDM4gmdMuclKuEc\nEB4IFH9BZphbhGEWpG1q7fddQCpH72dNmJlSNoY472CRNdvvSj6K0tjS9oq7WE5r\nogXL8f3dmSVV6q7aZYieTtlyt8+xq8xL15rsBvsZgE/X+CSSLEKSOdZA9Gk4EBAa\ndmvSUoWYlltOVlNFnxy1z+9ThpmmqXFf3Hb7EEaaeLZ8SVqn6nH3A53tzCMfaPaO\nCFCaaZ3e5vWnjZ5rCr2M6IYSlmU/T1pAB7t5m3C8e9OLHz1Y42rb5sAdf51JyM1s\n+Iq4/c0FhW4HmpLPMk7NkPlmLu/XiPBC726oYN0V/lSOi1FOLAFT8W7nRk60urpl\nqlF+FZb7AgMBAAECggEAO9v4mhySqunFvki5NXwjl+yNLAPXx+E/dKPVB0IleEHq\naSHh/cKfYYgSqypUuSt0bWPf5HcSnlzVAJ5kWis4FCPX5Cu+bWGH0lTQNDOe81Zx\nyGDUSwxZFaDG8x71NF3JD2blgbHHAhGzWr/pjZf9n1CimZcgGjG8FiSL1Ff5kVbe\n2fqlQcRai+17BpGlvuBxCVEv55zMBJkkwLGpaP9kkgEAMWyQEf1aefB91vWdZ2n8\n/jJSKxM8DEVrotFw786fLn+mhSv0qqLVFpRIYYhXkhGOS1t6Qld0Qqpx34r+u/zt\n5+9qtebhKQiIfer5yT2hXn4qobnQWfwcsZW5GsHHvQKBgQD4nBpygOuW4LvyuOBr\noIHxQ4DU8uKrludbt4V2MeXe5pycLCqWkVRnTelo0I+zlzdUv9UxbgYYJtMTTLIP\nxSdlBRbJbUhm2dEvYo9l3TfTS6SVb7HmoY8qg+Ol0slAzrp6jzPjj7c/l5we3YON\n4ryhRbtY+DinZdEF0n5TkEak5wKBgQDS+S1lBbQUvOz73NtvmaVFIogOeQp0lHM6\nPh2WlKa6NipTdbilFGTLXMdFbaw6eh3AcVv82pjvJ//v8BCDvGzJSrz90tSlMTxZ\nVX9s6UtD50fgVDvI8i2zAoGiFXzuJa7qOPWRFPAWSrTXjgWN+jF1MRDsIl/YC1Cy\nrHm40ETmzQKBgFwJPmlBfPYgQLQ86SgvBawRt3IecPfhJ8l2iXwWQOliKnxOhX20\nU7Di0RQykeCEjMFdO0nPV4Y9aUrty8W20Ty+w47SXElnPd/y9u9ZFD+u80E3Vn7x\nNJUiunY7MLJDVhnlRepq3AY41F1A2GEAnaB+tjrbue2O7fDf2lCJSv3lAoGAYexc\nYJ6EFngWe1To2WT0bCF6C1WtP61Dyo3YR/NZa+cGQFTMznqnyiiXKaedIEtcEd3L\n95IzGBZ12hWQZMUJrWiuThYUs1QmEcT4b0HduHfaScpvMXcPNR59sxDMOvFsvbSQ\nbrXMNlyYkdCOzXaKjD2pACF4YRvnafdaTCkHQiUCgYBU5v8KY8IGG74wtbvW9MtO\nFSm6aJKOjExj55WiaaVBb4hQ/gis/SG92qam2E7mbmVQqVyTWAiDv47pyi39cakW\nebl2xQA9reMMbt7JCnnLLpM8lw47cMKo0cCRric9fK2TDfza85PztFCww5Qr+oUw\nZOV9K9evo0KnJScsY/0Idw==\n-----END PRIVATE KEY-----\n",
+  "client_email": "trustix-vision-service@gen-lang-client-0030917104.iam.gserviceaccount.com",
+  "client_id": "112635324583484642392",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/trustix-vision-service%40gen-lang-client-0030917104.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
