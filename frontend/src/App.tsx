@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -22,28 +24,30 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Index />} />
-          <Route path="/asset-vault" element={<AssetVault />} />
-          <Route path="/ai-verification" element={<AIVerification />} />
-          <Route path="/nominee-governance" element={<NomineeGovernance />} />
-          <Route path="/blockchain" element={<BlockchainNotarization />} />
-          <Route path="/access-control" element={<AccessControl />} />
-          <Route path="/compliance" element={<ComplianceAudit />} />
-          <Route path="/activity-ledger" element={<ActivityLedger />} />
-          <Route path="/risk-monitoring" element={<RiskMonitoring />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<OrganizationSettings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/asset-vault" element={<ProtectedRoute><AssetVault /></ProtectedRoute>} />
+            <Route path="/ai-verification" element={<ProtectedRoute><AIVerification /></ProtectedRoute>} />
+            <Route path="/nominee-governance" element={<ProtectedRoute><NomineeGovernance /></ProtectedRoute>} />
+            <Route path="/blockchain" element={<ProtectedRoute><BlockchainNotarization /></ProtectedRoute>} />
+            <Route path="/access-control" element={<ProtectedRoute><AccessControl /></ProtectedRoute>} />
+            <Route path="/compliance" element={<ProtectedRoute><ComplianceAudit /></ProtectedRoute>} />
+            <Route path="/activity-ledger" element={<ProtectedRoute><ActivityLedger /></ProtectedRoute>} />
+            <Route path="/risk-monitoring" element={<ProtectedRoute><RiskMonitoring /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><OrganizationSettings /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

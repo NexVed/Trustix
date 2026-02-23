@@ -1,4 +1,7 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routes import vault, nominee, trigger, wallet, verification, profile
+from app.routes import auth_routes
 from app.config import settings
 
 app = FastAPI(
@@ -7,8 +10,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Secure CORS middleware to allow only Vercel frontend requests via env variable
-allowed_origins = [settings.frontend_url] if settings.frontend_url else ["*"]
+# Secure CORS middleware — allow local dev frontend + configured frontend URL
+allowed_origins = ["http://localhost:8080", "http://localhost:5173"]
+if settings.frontend_url:
+    allowed_origins.append(settings.frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +24,7 @@ app.add_middleware(
 )
 
 # Include endpoint routers
+app.include_router(auth_routes.router)
 app.include_router(vault.router)
 app.include_router(nominee.router)
 app.include_router(trigger.router)

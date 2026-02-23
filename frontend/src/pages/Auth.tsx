@@ -1,21 +1,102 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import "./Auth.css";
 
 export default function Auth() {
     const [isLogin, setIsLogin] = useState(true);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [fullName, setFullName] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
     const navigate = useNavigate();
 
-    const handleGoogleLogin = (e: React.MouseEvent) => {
+    const handleGoogleLogin = async (e: React.MouseEvent) => {
         e.preventDefault();
-        // Simulate login and go to dashboard
-        navigate("/dashboard");
+        setLoading(true);
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: `${window.location.origin}/dashboard`,
+                },
+            });
+            if (error) {
+                toast.error(error.message);
+            }
+        } catch (err: any) {
+            toast.error("Google sign-in failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleEmailAuth = (e: React.FormEvent) => {
+    const handleEmailAuth = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Simulate login and go to dashboard
-        navigate("/dashboard");
+        setLoading(true);
+
+        try {
+            if (isLogin) {
+                // Sign in
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) {
+                    toast.error(error.message);
+                    return;
+                }
+                toast.success("Signed in successfully!");
+                navigate("/dashboard");
+            } else {
+                // Sign up
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: fullName,
+                        },
+                    },
+                });
+                if (error) {
+                    toast.error(error.message);
+                    return;
+                }
+                toast.success("Account created! Please check your email to verify, then sign in.");
+                setIsLogin(true);
+                setPassword("");
+            }
+        } catch (err: any) {
+            toast.error("An unexpected error occurred. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!email) {
+            toast.error("Please enter your email address first.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth`,
+            });
+            if (error) {
+                toast.error(error.message);
+                return;
+            }
+            toast.success("Password reset email sent! Check your inbox.");
+        } catch (err: any) {
+            toast.error("Failed to send reset email. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -39,7 +120,11 @@ export default function Auth() {
                 </p>
 
                 {/* Google OAuth Button */}
-                <a href="#" className="btn-google" onClick={handleGoogleLogin}>
+                <a
+                    href="#"
+                    className={`btn-google ${loading ? "opacity-50 pointer-events-none" : ""}`}
+                    onClick={handleGoogleLogin}
+                >
                     <svg className="google-logo" width="20" height="20" viewBox="0 0 48 48">
                         <path
                             fill="#EA4335"
@@ -59,7 +144,7 @@ export default function Auth() {
                         />
                         <path fill="none" d="M0 0h48v48H0z" />
                     </svg>
-                    {isLogin ? "Continue with Google" : "Sign up with Google"}
+                    {loading ? "Please wait..." : isLogin ? "Continue with Google" : "Sign up with Google"}
                 </a>
 
                 <div className="divider">
@@ -70,26 +155,59 @@ export default function Auth() {
                     {!isLogin && (
                         <div className="field">
                             <label>Full Name</label>
-                            <input type="text" placeholder="John Doe" required />
+                            <input
+                                type="text"
+                                placeholder="John Doe"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                required
+                                disabled={loading}
+                            />
                         </div>
                     )}
                     <div className="field">
                         <label>Email</label>
-                        <input type="email" placeholder="you@example.com" required />
+                        <input
+                            type="email"
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            disabled={loading}
+                        />
                     </div>
                     <div className="field">
                         <label>Password</label>
-                        <input type="password" placeholder="••••••••" required />
+                        <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            disabled={loading}
+                        />
                     </div>
 
                     {isLogin && (
-                        <a href="#" className="forgot" onClick={(e) => e.preventDefault()}>
+                        <a
+                            href="#"
+                            className="forgot"
+                            onClick={handleForgotPassword}
+                        >
                             Forgot password?
                         </a>
                     )}
 
-                    <button type="submit" className="btn-submit">
-                        {isLogin ? "Sign In" : "Create Account"}
+                    <button type="submit" className={`btn-submit ${loading ? "opacity-70" : ""}`} disabled={loading}>
+                        {loading ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                                {isLogin ? "Signing in..." : "Creating account..."}
+                            </span>
+                        ) : (
+                            isLogin ? "Sign In" : "Create Account"
+                        )}
                     </button>
                 </form>
 
@@ -100,6 +218,7 @@ export default function Auth() {
                         onClick={(e) => {
                             e.preventDefault();
                             setIsLogin(!isLogin);
+                            setPassword("");
                         }}
                     >
                         {isLogin ? "Create one" : "Sign in"}

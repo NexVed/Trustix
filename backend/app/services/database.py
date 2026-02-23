@@ -74,3 +74,32 @@ def get_secure_profile(user_id: str):
         return response.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve secure profile: {str(e)}")
+
+
+def upsert_user_profile(user_id: str, email: str, full_name: str = "", avatar_url: str = ""):
+    client = get_supabase_client()
+    try:
+        data = {
+            "id": user_id,
+            "email": email,
+            "full_name": full_name or None,
+            "avatar_url": avatar_url or None,
+            "last_sign_in_at": "now()",
+        }
+        response = client.table("users").upsert(
+            data, on_conflict="id"
+        ).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upsert user profile: {str(e)}")
+
+
+def get_user_profile(user_id: str):
+    client = get_supabase_client()
+    try:
+        response = client.table("users").select("*").eq("id", user_id).execute()
+        if not response.data:
+            return None
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve user profile: {str(e)}")

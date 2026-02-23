@@ -1,5 +1,6 @@
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -27,11 +28,10 @@ import {
   Settings,
   Building2,
   ChevronDown,
-  Shield,
 } from "lucide-react";
 
 const mainNavItems = [
-  { title: "Overview", url: "/", icon: LayoutDashboard },
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Asset Vault", url: "/asset-vault", icon: Vault },
   { title: "AI Document Verification", url: "/ai-verification", icon: ScanSearch },
   { title: "Nominee Governance", url: "/nominee-governance", icon: Users },
@@ -50,13 +50,28 @@ const utilityNavItems = [
   { title: "Organization Settings", url: "/settings", icon: Settings },
 ];
 
+function getInitials(name?: string, email?: string): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email) return email.slice(0, 2).toUpperCase();
+  return "U";
+}
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user } = useAuth();
+
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "User";
+  const email = user?.email || "";
+  const initials = getInitials(fullName, email);
 
   const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -105,7 +120,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
+                      end={item.url === "/dashboard"}
                       className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                       activeClassName="bg-primary/10 text-primary font-medium"
                     >
@@ -172,11 +187,11 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary">JR</span>
+              <span className="text-xs font-semibold text-primary">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">James Reynolds</p>
-              <p className="text-[10px] text-muted-foreground truncate">j.reynolds@meridian.com</p>
+              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{fullName}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{email}</p>
             </div>
           </div>
         )}
