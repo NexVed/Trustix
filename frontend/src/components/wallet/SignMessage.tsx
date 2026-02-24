@@ -17,6 +17,19 @@ export const SignMessage: React.FC<SignMessageProps> = ({ apiBaseUrl = "http://l
     const { toast } = useToast();
 
     const handleSign = async () => {
+        // Wait briefly for MetaMask content script to inject window.ethereum
+        if (!window.ethereum) {
+            await new Promise<void>((resolve) => {
+                const interval = setInterval(() => {
+                    if (window.ethereum) {
+                        clearInterval(interval);
+                        resolve();
+                    }
+                }, 100);
+                setTimeout(() => { clearInterval(interval); resolve(); }, 3000);
+            });
+        }
+
         if (!window.ethereum) {
             toast({
                 title: "MetaMask not found",
@@ -103,9 +116,9 @@ export const SignMessage: React.FC<SignMessageProps> = ({ apiBaseUrl = "http://l
     };
 
     return (
-        <div className="p-6 bg-slate-900 rounded-xl border border-slate-800 shadow-sm text-white mt-4">
-            <h3 className="text-xl font-semibold mb-2">Cryptographic Signature</h3>
-            <p className="text-sm text-slate-400 mb-6">
+        <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm mt-4">
+            <h3 className="text-xl font-semibold mb-2 text-slate-900">Cryptographic Signature</h3>
+            <p className="text-sm text-slate-500 mb-6">
                 Sign a custom payload using your private key to verify identity to the Trustix backend without exposing secrets.
             </p>
 
@@ -118,31 +131,31 @@ export const SignMessage: React.FC<SignMessageProps> = ({ apiBaseUrl = "http://l
                         type="text"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        className="w-full bg-slate-800 border-slate-700 border text-slate-200 rounded-lg p-3 outline-none focus:border-blue-500 transition"
+                        className="w-full bg-slate-50 border-slate-200 border text-slate-900 rounded-lg p-3 outline-none focus:border-blue-500 transition"
                     />
                 </div>
 
                 <button
                     onClick={handleSign}
                     disabled={isSigning || !message}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition font-medium flex items-center justify-center space-x-2"
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-medium flex items-center justify-center space-x-2"
                 >
                     {isSigning ? "Awaiting Signature..." : "Sign Message with Wallet"}
                 </button>
 
                 {signature && (
-                    <div className="mt-4 p-4 bg-slate-800 rounded-lg border border-slate-700">
+                    <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Generated Signature</p>
-                        <p className="font-mono text-xs break-all text-slate-300 mb-4 bg-slate-900 p-2 rounded">
+                        <p className="font-mono text-xs break-all text-slate-700 mb-4 bg-slate-100 p-2 rounded">
                             {signature}
                         </p>
 
                         <button
                             onClick={handleVerify}
                             disabled={isVerifying}
-                            className={`w-full py-2 rounded-lg transition font-medium text-sm flex items-center justify-center ${verificationResult === 'success' ? 'bg-green-600/20 text-green-400 border border-green-600/50' :
-                                    verificationResult === 'failed' ? 'bg-red-600/20 text-red-400 border border-red-600/50' :
-                                        'bg-slate-700 hover:bg-slate-600 text-white'
+                            className={`w-full py-2 rounded-lg transition font-medium text-sm flex items-center justify-center ${verificationResult === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                verificationResult === 'failed' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                    'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                 }`}
                         >
                             {isVerifying ? "Verifying with server..." :

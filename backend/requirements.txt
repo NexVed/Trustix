@@ -13,3 +13,5 @@ python-dotenv
 bcrypt
 cryptography
 slowapi
+kiteconnect
+pycryptodome

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { VaultProvider } from "@/contexts/VaultContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
@@ -30,34 +31,36 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<Auth />} />
+      <VaultProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth" element={<Auth />} />
 
-            {/* New Trustix Pages */}
-            <Route path="/trustix-landing" element={<TrustixLanding />} />
-            <Route path="/nominee-generation" element={<ProtectedRoute><NomineeGeneration /></ProtectedRoute>} />
+              {/* New Trustix Pages */}
+              <Route path="/trustix-landing" element={<TrustixLanding />} />
+              <Route path="/nominee-generation" element={<ProtectedRoute><NomineeGeneration /></ProtectedRoute>} />
 
-            <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/asset-vault" element={<ProtectedRoute><AssetVault /></ProtectedRoute>} />
-            <Route path="/zk-vault" element={<ProtectedRoute><ZkVaultPage /></ProtectedRoute>} />
-            <Route path="/ai-verification" element={<ProtectedRoute><AIVerification /></ProtectedRoute>} />
-            <Route path="/nominee-governance" element={<ProtectedRoute><NomineeGovernance /></ProtectedRoute>} />
-            <Route path="/blockchain" element={<ProtectedRoute><BlockchainNotarization /></ProtectedRoute>} />
-            <Route path="/access-control" element={<ProtectedRoute><AccessControl /></ProtectedRoute>} />
-            <Route path="/compliance" element={<ProtectedRoute><ComplianceAudit /></ProtectedRoute>} />
-            <Route path="/activity-ledger" element={<ProtectedRoute><ActivityLedger /></ProtectedRoute>} />
-            <Route path="/risk-monitoring" element={<ProtectedRoute><RiskMonitoring /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><OrganizationSettings /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/asset-vault" element={<ProtectedRoute><AssetVault /></ProtectedRoute>} />
+              <Route path="/zk-vault" element={<ProtectedRoute><ZkVaultPage /></ProtectedRoute>} />
+              <Route path="/ai-verification" element={<ProtectedRoute><AIVerification /></ProtectedRoute>} />
+              <Route path="/nominee-governance" element={<ProtectedRoute><NomineeGovernance /></ProtectedRoute>} />
+              <Route path="/blockchain" element={<ProtectedRoute><BlockchainNotarization /></ProtectedRoute>} />
+              <Route path="/access-control" element={<ProtectedRoute><AccessControl /></ProtectedRoute>} />
+              <Route path="/compliance" element={<ProtectedRoute><ComplianceAudit /></ProtectedRoute>} />
+              <Route path="/activity-ledger" element={<ProtectedRoute><ActivityLedger /></ProtectedRoute>} />
+              <Route path="/risk-monitoring" element={<ProtectedRoute><RiskMonitoring /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><OrganizationSettings /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </VaultProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

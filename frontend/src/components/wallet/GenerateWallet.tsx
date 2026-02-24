@@ -72,23 +72,23 @@ export const GenerateWallet: React.FC<GenerateWalletProps> = ({ apiBaseUrl = "ht
     };
 
     return (
-        <div className="p-6 bg-slate-900 rounded-xl border border-slate-800 shadow-sm text-white mt-4">
+        <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm mt-4">
             <div className="flex items-center space-x-2 mb-2">
                 <ShieldAlert className="h-5 w-5 text-amber-500" />
-                <h3 className="text-xl font-semibold">Custodial Web3 Vault</h3>
+                <h3 className="text-xl font-semibold text-slate-900">Custodial Web3 Vault</h3>
             </div>
 
-            <p className="text-sm text-slate-400 mb-4">
+            <p className="text-sm text-slate-500 mb-4">
                 Don't have a wallet? We can generate a random Ethereum wallet for you.
                 Your raw private key is <strong>never</strong> stored in plaintext. It is immediately encrypted using AES-256-GCM derived from your vault password.
             </p>
 
             {generatedAddress ? (
-                <div className="bg-green-900/20 border border-green-800 p-4 rounded-lg flex items-start space-x-3">
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg flex items-start space-x-3">
                     <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
                     <div>
-                        <h4 className="text-sm font-medium text-green-400 mb-1">Vault Wallet Active</h4>
-                        <p className="font-mono text-xs text-slate-300 break-all">{generatedAddress}</p>
+                        <h4 className="text-sm font-medium text-green-700 mb-1">Vault Wallet Active</h4>
+                        <p className="font-mono text-xs text-slate-700 break-all">{generatedAddress}</p>
                         <p className="text-xs text-slate-500 mt-2">
                             The encrypted key is stored safely on the server. You can now receive assets to this address.
                         </p>
@@ -105,14 +105,14 @@ export const GenerateWallet: React.FC<GenerateWalletProps> = ({ apiBaseUrl = "ht
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Min 8 characters for PBKDF2 derivation"
-                            className="w-full bg-slate-800 border-slate-700 border text-slate-200 rounded-lg p-3 outline-none focus:border-amber-500 transition"
+                            className="w-full bg-slate-50 border-slate-200 border text-slate-900 rounded-lg p-3 outline-none focus:border-blue-500 transition"
                         />
                     </div>
 
                     <button
                         onClick={handleGenerate}
                         disabled={isGenerating || password.length < 8}
-                        className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg transition font-medium flex items-center justify-center space-x-2 shadow-lg shadow-amber-900/20"
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition font-medium flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/10"
                     >
                         {isGenerating ? "Encrypting Key in Vault..." : "Generate Secure Wallet"}
                     </button>

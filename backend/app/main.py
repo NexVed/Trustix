@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import vault, nominee, trigger, wallet, verification, profile, dashboard, documents, zerodha
 from app.routes import auth_routes
+from app.routes import activities as activities_routes
+from app.routes import settings as settings_routes
 from app.config import settings
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -41,6 +43,8 @@ app.include_router(zk_vault.router)
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(documents.router)
 app.include_router(zerodha.router)
+app.include_router(activities_routes.router)
+app.include_router(settings_routes.router)
 
 @app.get("/")
 def read_root():

@@ -248,3 +248,47 @@ def get_custodial_wallet_db(user_id: str):
         return response.data[0] if response.data else None
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch custodial wallet: {str(e)}")
+
+
+def get_vaults_for_user(user_id: str):
+    """Return list of vault records for a user."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vaults").select("*").eq("user_id", user_id).execute()
+        return response.data if response.data else []
+    except Exception:
+        return []
+
+
+def add_nominee_for_vault(vault_id: str, name: str, email: str, verification_level: str = "Level 1 — Basic", trigger_condition: str = "180-day inactivity", nominee_secret_key_hash: str = None):
+    """Insert a nominee with full profile fields and secret key hash for a vault."""
+    client = get_supabase_client()
+    try:
+        data = {
+            "vault_id": vault_id,
+            "nominee_email": email,
+            "name": name,
+            "verification_level": verification_level,
+            "trigger_condition": trigger_condition,
+            "legal_approval": "Pending Review",
+        }
+        if nominee_secret_key_hash:
+            data["nominee_secret_key_hash"] = nominee_secret_key_hash
+        response = client.table("nominees").insert(data).execute()
+        if response.data:
+            row = response.data[0]
+            return {
+                "id": row.get("id"),
+                "name": row.get("name", name),
+                "email": row.get("nominee_email", email),
+                "verification_level": row.get("verification_level", verification_level),
+                "legal_approval": row.get("legal_approval", "Pending Review"),
+                "trigger_condition": row.get("trigger_condition", trigger_condition),
+                "asset_count": 0,
+                "multi_party_status": "0/3 Approved",
+                "created_at": row.get("created_at", ""),
+            }
+        return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add nominee: {str(e)}")
+

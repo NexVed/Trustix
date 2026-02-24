@@ -5,6 +5,7 @@ import VaultCreationPopup from "@/components/trustix-vault/VaultCreationPopup";
 import VaultPortalModal from "@/components/trustix-vault/VaultPortalModal";
 import VaultAccess from "@/components/vault/VaultAccess";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVault } from "@/contexts/VaultContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZerodhaConnect } from "../components/zerodha/ZerodhaConnect";
@@ -69,8 +70,11 @@ const COLORS = [
 
 const Index = () => {
   const { session } = useAuth();
+  const { vaultId, setVaultToken } = useVault();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState<'portal' | 'create' | 'access' | 'dashboard'>('portal');
+  const [activeView, setActiveView] = useState<'portal' | 'create' | 'access' | 'dashboard'>(
+    () => vaultId ? 'dashboard' : 'portal'
+  );
   const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -79,13 +83,15 @@ const Index = () => {
     if (activeView === 'dashboard') {
       const fetchSummary = async () => {
         try {
-          // If using a custom hook for fetch or just straight up fetch:
           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
           const token = session?.access_token;
 
           if (!token) return;
 
-          const response = await fetch(`${API_URL}/dashboard/summary`, {
+          const params = new URLSearchParams();
+          if (vaultId) params.set('vault_id', vaultId);
+
+          const response = await fetch(`${API_URL}/dashboard/summary?${params.toString()}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -105,7 +111,7 @@ const Index = () => {
       fetchSummary();
     }
 
-  }, [activeView, session?.access_token]);
+  }, [activeView, session?.access_token, vaultId]);
 
   return (
     <DashboardLayout>
@@ -118,7 +124,10 @@ const Index = () => {
 
       <VaultCreationPopup
         isOpen={activeView === 'create'}
-        onClose={() => setActiveView('dashboard')}
+        onClose={(token?: string) => {
+          if (token) setVaultToken(token);
+          setActiveView('dashboard');
+        }}
       />
 
       <AnimatePresence>
@@ -132,7 +141,7 @@ const Index = () => {
             <div className="relative w-full max-w-lg z-50" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setActiveView('portal')}
-                className="absolute top-2 right-2 p-2 z-[60] bg-zinc-100 dark:bg-zinc-800 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 transition"
+                className="absolute top-2 right-2 p-2 z-[60] bg-slate-100 rounded-full hover:bg-slate-200 transition"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600 dark:text-zinc-400">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -140,8 +149,10 @@ const Index = () => {
                 </svg>
               </button>
               <VaultAccess onUnlocked={(key) => {
+                // VaultAccess stores the token in localStorage — sync it to context
+                const token = localStorage.getItem('trustix.vault.token');
+                if (token) setVaultToken(token);
                 setActiveView('dashboard');
-                navigate('/zk-vault', { state: { encryptionKey: key } });
               }} />
             </div>
           </motion.div>

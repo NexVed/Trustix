@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,37 +7,98 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShieldCheck, Crown, Scale, Eye, User, UserPlus } from "lucide-react";
+import { ShieldCheck, Crown, Scale, Eye, User, UserPlus, Loader2, Shield } from "lucide-react";
+import { useVault } from "@/contexts/VaultContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
-const roles = [
-  { name: "Super Admin", icon: Crown, description: "Full platform access", users: 2, color: "bg-primary/10 text-primary" },
-  { name: "Legal Officer", icon: Scale, description: "Document & compliance access", users: 5, color: "bg-success/10 text-success" },
-  { name: "Auditor", icon: Eye, description: "Read-only audit access", users: 3, color: "bg-warning/10 text-warning" },
-  { name: "Client", icon: User, description: "Limited self-service access", users: 12, color: "bg-info/10 text-info" },
+const roleConfig = [
+  { key: "owner", name: "Vault Owner", icon: Crown, description: "Full vault access & management", color: "bg-primary/10 text-primary" },
+  { key: "nominee", name: "Nominee", icon: Scale, description: "View-only access on trigger activation", color: "bg-success/10 text-success" },
+  { key: "auditor", name: "Auditor", icon: Eye, description: "Read-only audit & compliance access", color: "bg-warning/10 text-warning" },
+  { key: "viewer", name: "Viewer", icon: User, description: "Limited read-only access", color: "bg-info/10 text-info" },
 ];
 
-const permissions = [
-  "View Assets", "Edit Assets", "Delete Assets", "Manage Nominees",
-  "Approve Documents", "View Audit Logs", "Manage Users", "Blockchain Operations",
-  "Export Data", "Organization Settings",
+const allPermissions = [
+  "View Assets", "Upload Documents", "Delete Assets", "Manage Nominees",
+  "Approve Documents", "View Audit Logs", "Manage Vault Settings", "Blockchain Operations",
+  "Export Data", "Trigger Dead-Man Switch",
 ];
 
-const matrix: Record<string, boolean[]> = {
-  "Super Admin": [true, true, true, true, true, true, true, true, true, true],
-  "Legal Officer": [true, true, false, true, true, true, false, false, true, false],
-  "Auditor": [true, false, false, false, false, true, false, false, true, false],
-  "Client": [true, false, false, false, false, false, false, false, false, false],
+const defaultMatrix: Record<string, boolean[]> = {
+  owner: [true, true, true, true, true, true, true, true, true, true],
+  nominee: [true, false, false, false, false, false, false, false, false, false],
+  auditor: [true, false, false, false, false, true, false, false, true, false],
+  viewer: [true, false, false, false, false, false, false, false, false, false],
 };
 
 export default function AccessControl() {
-  const [perms, setPerms] = useState(matrix);
+  const { vaultId, role } = useVault();
+  const { session } = useAuth();
+  const { toast } = useToast();
 
-  const toggle = (role: string, idx: number) => {
+  const [perms, setPerms] = useState(defaultMatrix);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("");
+  const [inviting, setInviting] = useState(false);
+
+  // In a full implementation, load permissions from the backend
+  // For now, use vault role to determine which column is "you"
+
+  const toggle = (roleKey: string, idx: number) => {
+    if (role !== 'owner') {
+      toast({ title: "Permission Denied", description: "Only vault owners can modify permissions.", variant: "destructive" });
+      return;
+    }
     setPerms((prev) => ({
       ...prev,
-      [role]: prev[role].map((v, i) => (i === idx ? !v : v)),
+      [roleKey]: prev[roleKey].map((v, i) => (i === idx ? !v : v)),
     }));
+    toast({ title: "Permission Updated", description: `Updated "${allPermissions[idx]}" for ${roleKey}.` });
   };
+
+  const handleInvite = async () => {
+    if (!inviteEmail || !inviteRole) return;
+    setInviting(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      // Log the invitation as an activity
+      await fetch(`${API_URL}/activities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "Team Invitation Sent",
+          entity: `${inviteEmail} — ${inviteRole}`,
+          type: "Success",
+          vault_id: vaultId,
+        }),
+      });
+      toast({ title: "Invitation Sent", description: `Invite sent to ${inviteEmail} as ${inviteRole}.` });
+      setInviteOpen(false);
+      setInviteEmail("");
+      setInviteRole("");
+    } catch {
+      toast({ title: "Error", description: "Failed to send invitation.", variant: "destructive" });
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  if (!vaultId) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-xl mx-auto mt-12 card-enterprise p-12 text-center">
+          <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Vault Selected</h3>
+          <p className="text-sm text-muted-foreground">Go to the Dashboard and create or access a vault to configure access controls.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -45,38 +106,53 @@ export default function AccessControl() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="page-title">Access Control</h1>
-            <p className="page-subtitle">Enterprise role-based access management</p>
+            <p className="page-subtitle">Role-based access management for your vault</p>
           </div>
-          <Dialog>
+          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2"><UserPlus className="h-4 w-4" />Invite Team Member</Button>
+              <Button className="gap-2" disabled={role !== 'owner'}><UserPlus className="h-4 w-4" />Invite Team Member</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Invite Team Member</DialogTitle>
-                <DialogDescription>Send an invitation to join the organization.</DialogDescription>
+                <DialogDescription>Send an invitation to join this vault.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2"><Label>Email Address</Label><Input type="email" placeholder="colleague@company.com" /></div>
+                <div className="space-y-2"><Label>Email Address</Label><Input type="email" placeholder="colleague@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></div>
                 <div className="space-y-2"><Label>Role</Label>
-                  <Select><SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger><SelectContent><SelectItem value="admin">Super Admin</SelectItem><SelectItem value="legal">Legal Officer</SelectItem><SelectItem value="auditor">Auditor</SelectItem><SelectItem value="client">Client</SelectItem></SelectContent></Select>
+                  <Select value={inviteRole} onValueChange={setInviteRole}><SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger><SelectContent>{roleConfig.map(r => <SelectItem key={r.key} value={r.name}>{r.name}</SelectItem>)}</SelectContent></Select>
                 </div>
               </div>
-              <DialogFooter><Button>Send Invitation</Button></DialogFooter>
+              <DialogFooter>
+                <Button onClick={handleInvite} disabled={inviting || !inviteEmail || !inviteRole}>
+                  {inviting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</> : "Send Invitation"}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
+        {/* Current Role Banner */}
+        <div className="card-enterprise p-4 bg-primary/5 border-primary/20">
+          <div className="flex items-center gap-3">
+            <Crown className="h-5 w.5 text-primary" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Your Role: <span className="text-primary capitalize">{role || 'owner'}</span></p>
+              <p className="text-xs text-muted-foreground">Permissions are determined by your vault access level</p>
+            </div>
+          </div>
+        </div>
+
         {/* Role Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {roles.map((r) => (
-            <div key={r.name} className="card-enterprise p-5">
+          {roleConfig.map((r) => (
+            <div key={r.key} className={`card-enterprise p-5 ${r.key === role ? 'ring-2 ring-primary' : ''}`}>
               <div className={`h-10 w-10 rounded-xl ${r.color} flex items-center justify-center mb-3`}>
                 <r.icon className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-semibold text-foreground">{r.name}</h4>
               <p className="text-xs text-muted-foreground mb-2">{r.description}</p>
-              <span className="text-xs font-medium text-muted-foreground">{r.users} users</span>
+              {r.key === role && <span className="text-[10px] font-medium text-primary">← Your Role</span>}
             </div>
           ))}
         </div>
@@ -86,23 +162,28 @@ export default function AccessControl() {
           <div className="p-5 border-b border-border flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
             <h3 className="section-title">Permissions Matrix</h3>
+            {role !== 'owner' && <span className="text-xs text-muted-foreground ml-auto">Read-only (owner can edit)</span>}
           </div>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-xs font-semibold text-muted-foreground">Permission</TableHead>
-                {roles.map((r) => (
-                  <TableHead key={r.name} className="text-xs font-semibold text-muted-foreground text-center">{r.name}</TableHead>
+                {roleConfig.map((r) => (
+                  <TableHead key={r.key} className="text-xs font-semibold text-muted-foreground text-center">{r.name}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {permissions.map((perm, pi) => (
+              {allPermissions.map((perm, pi) => (
                 <TableRow key={perm}>
                   <TableCell className="text-sm text-foreground">{perm}</TableCell>
-                  {roles.map((r) => (
-                    <TableCell key={r.name} className="text-center">
-                      <Switch checked={perms[r.name][pi]} onCheckedChange={() => toggle(r.name, pi)} />
+                  {roleConfig.map((r) => (
+                    <TableCell key={r.key} className="text-center">
+                      <Switch
+                        checked={perms[r.key][pi]}
+                        onCheckedChange={() => toggle(r.key, pi)}
+                        disabled={role !== 'owner'}
+                      />
                     </TableCell>
                   ))}
                 </TableRow>

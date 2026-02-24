@@ -112,11 +112,11 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
     };
 
     return (
-        <div className="flex flex-col items-center justify-center p-6 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-950 shadow-sm mt-8 max-w-lg mx-auto w-full">
+        <div className="flex flex-col items-center justify-center p-6 border border-slate-200 rounded-2xl bg-white shadow-sm mt-8 max-w-lg mx-auto w-full">
             <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
-                <ShieldCheck className="w-6 h-6 text-blue-500" />
+                <ShieldCheck className="w-6 h-6 text-blue-600" />
             </div>
-            <h2 className="text-2xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">Unlock Your Vault</h2>
+            <h2 className="text-2xl font-bold mb-2 text-slate-900">Unlock Your Vault</h2>
 
             <AnimatePresence mode="wait">
                 {nomineeCount === null ? (
@@ -127,7 +127,7 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
                         exit={{ opacity: 0, y: -10 }}
                         className="w-full flex flex-col items-center"
                     >
-                        <p className="mb-6 max-w-sm text-center text-zinc-500 text-sm">
+                        <p className="mb-6 max-w-sm text-center text-slate-500 text-sm">
                             Enter your Vault Identifier to begin securely accessing your sealed assets.
                         </p>
                         <div className="flex flex-col w-full max-w-sm space-y-4">
@@ -158,17 +158,17 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
                     >
                         {nomineeCount > 0 ? (
                             <div className="w-full mb-6 mt-2">
-                                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+                                <div className="flex p-1 bg-slate-100 rounded-lg">
                                     <button
                                         onClick={() => setAccessMethod('owner')}
-                                        className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-all ${accessMethod === 'owner' ? 'bg-white dark:bg-zinc-800 shadow shadow-zinc-200 dark:shadow-none text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'}`}
+                                        className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-all ${accessMethod === 'owner' ? 'bg-white shadow shadow-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
                                     >
                                         <KeyRound className="w-4 h-4 mr-2" />
                                         Owner Access
                                     </button>
                                     <button
                                         onClick={() => setAccessMethod('nominees')}
-                                        className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-all ${accessMethod === 'nominees' ? 'bg-white dark:bg-zinc-800 shadow shadow-zinc-200 dark:shadow-none text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'}`}
+                                        className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-all ${accessMethod === 'nominees' ? 'bg-white shadow shadow-slate-200 text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
                                     >
                                         <Users className="w-4 h-4 mr-2" />
                                         Nominee Access
@@ -176,8 +176,8 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
                                 </div>
                             </div>
                         ) : (
-                            <p className="mb-6 max-w-sm text-center text-zinc-500 text-sm">
-                                Enter the Owner Secret Key for vault <span className="font-mono text-zinc-900 dark:text-zinc-300">{vaultCode}</span>
+                            <p className="mb-6 max-w-sm text-center text-slate-500 text-sm">
+                                Enter the Owner Secret Key for vault <span className="font-mono text-slate-900">{vaultCode}</span>
                             </p>
                         )}
 
@@ -204,7 +204,7 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
                                                 onChange={(e) => handleNomineeKeyChange(index, e.target.value)}
                                                 className="font-mono text-sm w-full h-11 pl-10"
                                             />
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-mono text-xs font-bold">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs font-bold">
                                                 #{index + 1}
                                             </span>
                                         </div>

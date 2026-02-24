@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, Any, List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Dict, Any, List, Optional
 from app.services.auth import get_current_user
 from app.services.database import get_supabase_client
 import datetime
@@ -7,13 +7,12 @@ import datetime
 router = APIRouter()
 
 @router.get("/summary")
-async def get_dashboard_summary(user: dict = Depends(get_current_user)):
+async def get_dashboard_summary(user_id: str = Depends(get_current_user), vault_id: Optional[str] = Query(None)):
     """
     Returns aggregated dashboard metrics and recent user activity.
-    Requires authentication.
+    Optionally scoped to a specific vault via vault_id query param.
     """
     client = get_supabase_client()
-    user_id = user["sub"]
     
     try:
         # Aggregations
@@ -22,18 +21,26 @@ async def get_dashboard_summary(user: dict = Depends(get_current_user)):
         verified_documents = 0
         notarizations = 0
         
-        # 1. Count Total Encrypted Assets (we'll count Vaults as assets for now, or user_secure_profiles)
-        vaults_res = client.table("vaults").select("id", count="exact").eq("user_id", user_id).execute()
-        if vaults_res.count is not None:
-            encrypted_assets = vaults_res.count
+        # 1. Count Total Encrypted Assets — scoped to vault if provided
+        if vault_id:
+            # Count 1 for the vault itself
+            vault_res = client.table("vaults").select("id", count="exact").eq("id", vault_id).execute()
+            encrypted_assets = vault_res.count if vault_res.count else 0
+        else:
+            vaults_res = client.table("vaults").select("id", count="exact").eq("user_id", user_id).execute()
+            if vaults_res.count is not None:
+                encrypted_assets = vaults_res.count
             
         profiles_res = client.table("user_secure_profiles").select("id", count="exact").eq("user_id", user_id).execute()
         if profiles_res.count is not None:
             encrypted_assets += profiles_res.count
             
-        # 2. Count active nominees linked to user's vaults
-        if encrypted_assets > 0:
-            # We need to get the user's vault IDs first
+        # 2. Count active nominees — scoped to vault if provided
+        if vault_id:
+            nominees_res = client.table("nominees").select("id", count="exact").eq("vault_id", vault_id).execute()
+            if nominees_res.count is not None:
+                active_nominees = nominees_res.count
+        elif encrypted_assets > 0:
             vaults_data = client.table("vaults").select("id").eq("user_id", user_id).execute()
             vault_ids = [v["id"] for v in vaults_data.data]
             

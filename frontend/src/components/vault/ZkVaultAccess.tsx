@@ -43,12 +43,12 @@ export default function ZkVaultAccess({ onUnlocked }: { onUnlocked: (key: string
     };
 
     return (
-        <div className="flex flex-col items-center justify-center p-6 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-950 shadow-sm mt-8 max-w-lg mx-auto w-full">
+        <div className="flex flex-col items-center justify-center p-6 border border-slate-200 rounded-2xl bg-white shadow-sm mt-8 max-w-lg mx-auto w-full">
             <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
-                <ShieldCheck className="w-6 h-6 text-blue-500" />
+                <ShieldCheck className="w-6 h-6 text-blue-600" />
             </div>
-            <h2 className="text-2xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">Unlock ZK Vault</h2>
-            <p className="mb-6 max-w-sm text-center text-zinc-500 text-sm">
+            <h2 className="text-2xl font-bold mb-2 text-slate-900">Unlock ZK Vault</h2>
+            <p className="mb-6 max-w-sm text-center text-slate-500 text-sm">
                 Enter your secure 64-character encryption key to decrypt your vault.
             </p>
 

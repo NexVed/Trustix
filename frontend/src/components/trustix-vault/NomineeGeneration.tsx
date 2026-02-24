@@ -237,7 +237,7 @@ export default function NomineeGeneration() {
                                     <button
                                         onClick={generateNewNominee}
                                         disabled={!newName || !newEmail}
-                                        className="w-full mt-6 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
                                     >
                                         Generate Nominee Secret Key
                                     </button>
