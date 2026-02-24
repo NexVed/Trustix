@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
   FileCheck,
@@ -31,7 +32,85 @@ const validationChecks = [
 
 export default function AIVerification() {
   const [processing, setProcessing] = useState(false);
-  const [verified, setVerified] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setProcessing(true);
+    setVerified(false);
+
+    try {
+      // Fetch the Vault Session JWT from localStorage (set by VaultAccess)
+      const token = localStorage.getItem('trustix.vault.token');
+
+      if (!token) {
+        toast({
+          title: "Upload Failed",
+          description: "Please unlock your Vault from the Dashboard first before uploading encrypted documents.",
+          variant: "destructive",
+        });
+        setProcessing(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", "legal_contracts"); // Default for AI Verification
+
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const response = await fetch(`${apiUrl}/documents/upload`, {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMsg = "Upload failed. Please try again.";
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.detail || errorMsg;
+        } catch (e) { }
+
+        console.error("Upload failed", errorMsg);
+        toast({
+          title: "Upload Failed",
+          description: errorMsg.includes("Vault session invalid")
+            ? "Please unlock your Vault from the Dashboard first before uploading encrypted documents."
+            : errorMsg,
+          variant: "destructive",
+        });
+        setProcessing(false);
+        return;
+      } else {
+        console.log("Upload success", await response.json());
+        toast({
+          title: "Upload Successful",
+          description: "Document encrypted and securely stored in Google Cloud.",
+        });
+      }
+    } catch (error) {
+      console.error("Error during upload:", error);
+      toast({
+        title: "Network Error",
+        description: "Could not connect to the backend server. Make sure it's running.",
+        variant: "destructive"
+      });
+      setProcessing(false);
+      return;
+    } finally {
+      // Show Verification UI shortly after
+      setTimeout(() => {
+        setProcessing(false);
+        setVerified(true);
+      }, 1500);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -46,23 +125,32 @@ export default function AIVerification() {
           <div className="card-enterprise p-6">
             <h3 className="section-title mb-4">Secure Document Upload</h3>
             <div
-              className="border-2 border-dashed border-border rounded-2xl p-12 flex flex-col items-center justify-center gap-4 hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
-              onClick={() => { setProcessing(true); setTimeout(() => setProcessing(false), 2000); }}
+              className="border-2 border-dashed border-border rounded-2xl p-12 flex flex-col items-center justify-center gap-4 hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer relative"
+              onClick={() => fileInputRef.current?.click()}
             >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
+                accept=".pdf,.png,.jpeg,.jpg,.docx"
+              />
               {processing ? (
                 <>
                   <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                  <p className="text-sm font-medium text-foreground">AI Processing Document...</p>
-                  <p className="text-xs text-muted-foreground">Extracting data & running fraud analysis</p>
+                  <p className="text-sm font-medium text-foreground">Securely Uploading & AI Processing...</p>
+                  <p className="text-xs text-muted-foreground">Encrypting (AES-256) & uploading to Private Cloud</p>
                 </>
               ) : (
                 <>
                   <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <Upload className="h-8 w-8 text-primary" />
                   </div>
-                  <p className="text-sm font-medium text-foreground">Drag & drop documents here</p>
+                  <p className="text-sm font-medium text-foreground">Click or Drag & drop documents here</p>
                   <p className="text-xs text-muted-foreground">Supports PDF, DOCX, PNG, JPG — Max 50MB — AES-256 encrypted</p>
-                  <Button variant="outline" size="sm">Browse Files</Button>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                    Browse Files
+                  </Button>
                 </>
               )}
             </div>

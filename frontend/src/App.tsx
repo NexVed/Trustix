@@ -19,6 +19,11 @@ import ActivityLedger from "./pages/ActivityLedger";
 import RiskMonitoring from "./pages/RiskMonitoring";
 import Reports from "./pages/Reports";
 import OrganizationSettings from "./pages/OrganizationSettings";
+import ZkVaultPage from "./pages/ZkVaultPage";
+
+// New Trustix UI Components
+import TrustixLanding from "@/components/trustix-vault/TrustixLanding";
+import NomineeGeneration from "@/components/trustix-vault/NomineeGeneration";
 
 const queryClient = new QueryClient();
 
@@ -32,8 +37,14 @@ const App = () => (
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
+
+            {/* New Trustix Pages */}
+            <Route path="/trustix-landing" element={<TrustixLanding />} />
+            <Route path="/nominee-generation" element={<ProtectedRoute><NomineeGeneration /></ProtectedRoute>} />
+
             <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/asset-vault" element={<ProtectedRoute><AssetVault /></ProtectedRoute>} />
+            <Route path="/zk-vault" element={<ProtectedRoute><ZkVaultPage /></ProtectedRoute>} />
             <Route path="/ai-verification" element={<ProtectedRoute><AIVerification /></ProtectedRoute>} />
             <Route path="/nominee-governance" element={<ProtectedRoute><NomineeGovernance /></ProtectedRoute>} />
             <Route path="/blockchain" element={<ProtectedRoute><BlockchainNotarization /></ProtectedRoute>} />

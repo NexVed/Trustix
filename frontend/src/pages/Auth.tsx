@@ -26,6 +26,7 @@ export default function Auth() {
             if (error) {
                 toast.error(error.message);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             toast.error("Google sign-in failed. Please try again.");
         } finally {
@@ -69,6 +70,7 @@ export default function Auth() {
                 setIsLogin(true);
                 setPassword("");
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             toast.error("An unexpected error occurred. Please try again.");
         } finally {
@@ -92,6 +94,7 @@ export default function Auth() {
                 return;
             }
             toast.success("Password reset email sent! Check your inbox.");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             toast.error("Failed to send reset email. Please try again.");
         } finally {

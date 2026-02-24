@@ -28,11 +28,13 @@ import {
   Settings,
   Building2,
   ChevronDown,
+  ShieldAlert,
 } from "lucide-react";
 
 const mainNavItems = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Asset Vault", url: "/asset-vault", icon: Vault },
+  { title: "ZK Vault", url: "/zk-vault", icon: ShieldAlert },
   { title: "AI Document Verification", url: "/ai-verification", icon: ScanSearch },
   { title: "Nominee Governance", url: "/nominee-governance", icon: Users },
   { title: "Blockchain Notarization", url: "/blockchain", icon: Link2 },

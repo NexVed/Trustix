@@ -16,10 +16,26 @@ const AuthContext = createContext<AuthContextType>({
     signOut: async () => { },
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const ctx = useContext(AuthContext);
     if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
     return ctx;
+};
+
+// Helper functions for cookie management
+const setAuthCookie = (token: string, expiresInSeconds: number) => {
+    // Calculate expiration date
+    const date = new Date();
+    date.setTime(date.getTime() + (expiresInSeconds * 1000));
+    const expires = "; expires=" + date.toUTCString();
+
+    // Set cookie on root path
+    document.cookie = "sb-access-token=" + token + expires + "; path=/; SameSite=Lax";
+};
+
+const clearAuthCookie = () => {
+    document.cookie = "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;";
 };
 
 /**
@@ -31,11 +47,12 @@ async function syncUserProfile(session: Session) {
     try {
         await fetch(`${apiUrl}/auth/signup-sync`, {
             method: 'POST',
+            credentials: 'include', // Ensure cookies are sent properly
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
+                id: session.user.id,
                 email: session.user.email,
                 full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || '',
                 avatar_url: session.user.user_metadata?.avatar_url || '',
@@ -60,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Sync on initial load if session exists
             if (session) {
+                setAuthCookie(session.access_token, session.expires_in ?? 3600);
                 syncUserProfile(session);
             }
         });
@@ -71,9 +89,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(session?.user ?? null);
                 setLoading(false);
 
+                if (session) {
+                    setAuthCookie(session.access_token, session.expires_in ?? 3600);
+                }
+
                 // Sync profile on sign-in or sign-up
                 if (session && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
                     await syncUserProfile(session);
+                } else if (event === 'SIGNED_OUT') {
+                    clearAuthCookie();
                 }
             }
         );
@@ -87,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
         setUser(null);
         setSession(null);
+        clearAuthCookie();
     };
 
     return (

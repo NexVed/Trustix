@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-pydantic
+pydantic[email]
 pydantic-settings
 python-jose
 google-cloud-storage
@@ -10,3 +10,6 @@ eth-account
 google-cloud-vision
 pillow
 python-dotenv
+bcrypt
+cryptography
+slowapi
