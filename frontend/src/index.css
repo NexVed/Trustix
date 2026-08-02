@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css?family=Alike:700|Alike:400');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
@@ -5,102 +6,138 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 99%;
-    --foreground: 222 47% 11%;
+  :root,
+  :root[data-theme="light"] {
+    --text: #000b07;
+    --background-hex: #f5fffb;
+    --primary-hex: #0cfa9e;
+    --secondary-hex: #6acafc;
+    --accent-hex: #448dfb;
+
+    /* HSL Variables for Tailwind & Component Library */
+    --background: 156 100% 98%;      /* #f5fffb */
+    --foreground: 158 100% 2%;       /* #000b07 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 158 100% 2%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 158 100% 2%;
 
-    --primary: 226 82% 48%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 157 95% 51%;          /* #0cfa9e */
+    --primary-foreground: 158 100% 2%;
 
-    --secondary: 214 32% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 201 96% 70%;        /* #6acafc */
+    --secondary-foreground: 158 100% 2%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 156 30% 94%;
+    --muted-foreground: 158 20% 40%;
 
-    --accent: 224 76% 38%;
+    --accent: 216 96% 63%;           /* #448dfb */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 157 95% 51%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 199 89% 48%;
+    --info: 201 96% 70%;
     --info-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 226 82% 48%;
+    --border: 156 30% 90%;
+    --input: 156 30% 90%;
+    --ring: 157 95% 51%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 9% 46%;
-    --sidebar-primary: 226 82% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 93%;
-    --sidebar-ring: 226 82% 48%;
-
-    --chart-1: 226 82% 48%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 199 89% 48%;
-    --chart-5: 280 65% 60%;
+    --sidebar-foreground: 158 20% 40%;
+    --sidebar-primary: 157 95% 51%;
+    --sidebar-primary-foreground: 158 100% 2%;
+    --sidebar-accent: 156 30% 94%;
+    --sidebar-accent-foreground: 158 100% 2%;
+    --sidebar-border: 156 30% 90%;
+    --sidebar-ring: 157 95% 51%;
   }
 
-  .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 226 82% 56%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 224 76% 48%;
+  .dark,
+  :root[data-theme="dark"] {
+    --text: #f5fffb;
+    --background-hex: #000a06;
+    --primary-hex: #05f599;
+    --secondary-hex: #036396;
+    --accent-hex: #044cb9;
+
+    /* HSL Variables for Tailwind & Component Library */
+    --background: 156 100% 2%;       /* #000a06 */
+    --foreground: 156 100% 98%;      /* #f5fffb */
+
+    --card: 156 80% 4%;
+    --card-foreground: 156 100% 98%;
+
+    --popover: 156 80% 4%;
+    --popover-foreground: 156 100% 98%;
+
+    --primary: 157 96% 49%;          /* #05f599 */
+    --primary-foreground: 156 100% 2%;
+
+    --secondary: 201 96% 30%;        /* #036396 */
+    --secondary-foreground: 156 100% 98%;
+
+    --muted: 156 30% 10%;
+    --muted-foreground: 156 20% 65%;
+
+    --accent: 216 96% 37%;           /* #044cb9 */
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 226 82% 56%;
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 215 20% 65%;
-    --sidebar-primary: 226 82% 56%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 15%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 226 82% 56%;
+
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 156 30% 12%;
+    --input: 156 30% 12%;
+    --ring: 157 96% 49%;
+
+    --sidebar-background: 156 100% 2%;
+    --sidebar-foreground: 156 20% 65%;
+    --sidebar-primary: 157 96% 49%;
+    --sidebar-primary-foreground: 156 100% 2%;
+    --sidebar-accent: 156 30% 10%;
+    --sidebar-accent-foreground: 156 100% 98%;
+    --sidebar-border: 156 30% 12%;
+    --sidebar-ring: 157 96% 49%;
   }
 }
 
 @layer base {
+  html {
+    font-size: 100%; /* 16px */
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Alike', serif;
+    font-weight: 400;
   }
+
+  h1, h2, h3, h4, h5 {
+    font-family: 'Alike', serif;
+    font-weight: 700;
+  }
+
+  h1 { font-size: 4.210rem; /* 67.36px */ }
+  h2 { font-size: 3.158rem; /* 50.56px */ }
+  h3 { font-size: 2.369rem; /* 37.92px */ }
+  h4 { font-size: 1.777rem; /* 28.48px */ }
+  h5 { font-size: 1.333rem; /* 21.28px */ }
+  small { font-size: 0.750rem; /* 12px */ }
 }
 
 @layer utilities {

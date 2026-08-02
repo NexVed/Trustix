@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { VaultProvider } from "@/contexts/VaultContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -27,6 +27,7 @@ import TrustixLanding from "@/components/trustix-vault/TrustixLanding";
 import NomineeGeneration from "@/components/trustix-vault/NomineeGeneration";
 
 const queryClient = new QueryClient();
+const isDashboardPreview = import.meta.env.DEV;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -38,13 +39,13 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth" element={isDashboardPreview ? <Navigate to="/dashboard" replace /> : <Auth />} />
 
               {/* New Trustix Pages */}
               <Route path="/trustix-landing" element={<TrustixLanding />} />
               <Route path="/nominee-generation" element={<ProtectedRoute><NomineeGeneration /></ProtectedRoute>} />
 
-              <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/dashboard" element={isDashboardPreview ? <Index /> : <ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/asset-vault" element={<ProtectedRoute><AssetVault /></ProtectedRoute>} />
               <Route path="/zk-vault" element={<ProtectedRoute><ZkVaultPage /></ProtectedRoute>} />
               <Route path="/ai-verification" element={<ProtectedRoute><AIVerification /></ProtectedRoute>} />

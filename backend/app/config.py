@@ -14,6 +14,15 @@ class Settings(BaseSettings):
     gcp_private_key: str = ""
     frontend_url: str = ""
 
+    # Infura & Polygon Settings
+    infura_api_key: str = ""
+    infura_project_secret: str = ""
+    polygon_rpc_url: str = ""
+    polygon_amoy_rpc_url: str = ""
+    polygon_chain_id: int = 137
+    polygon_amoy_chain_id: int = 80002
+
+
     class Config:
         env_file = ".env"
         extra = "ignore"

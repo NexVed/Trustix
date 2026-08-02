@@ -12,6 +12,25 @@ export default function Auth() {
     const [loading, setLoading] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const navigate = useNavigate();
+    const handleGlassPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (event.pointerType === "touch") return;
+
+        const card = event.currentTarget;
+        const bounds = card.getBoundingClientRect();
+        const x = (event.clientX - bounds.left) / bounds.width;
+        const y = (event.clientY - bounds.top) / bounds.height;
+
+        card.style.setProperty("--glass-shadow-x", `${(x - 0.5) * 12}px`);
+        card.style.setProperty("--glass-shadow-y", `${(y - 0.5) * 12}px`);
+        card.style.setProperty("--glass-radius", `${26 + x * 6}px`);
+    };
+
+    const resetGlassPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+        const card = event.currentTarget;
+        card.style.setProperty("--glass-shadow-x", "0px");
+        card.style.setProperty("--glass-shadow-y", "0px");
+        card.style.setProperty("--glass-radius", "30px");
+    };
 
     const handleGoogleLogin = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -111,11 +130,12 @@ export default function Auth() {
             <div className="orb orb2"></div>
             <div className="orb orb3"></div>
 
-            <div className="card">
-                <div className="brand">
-                    <img src="/logo.png" alt="Trustix Logo" className="w-10 h-10 object-contain" />
-                    <span className="brand-name">TRUSTIX</span>
+            <div className="card" onPointerMove={handleGlassPointerMove} onPointerLeave={resetGlassPointer}>
+                <div className="brand flex items-center gap-3">
+                    <img src="/trustixlogo.png" alt="Trustix Logo" className="w-10 h-10 object-contain" />
+                    <img src="/trustixname.png" alt="TRUSTIX" className="h-6 w-auto object-contain" />
                 </div>
+
 
                 <h1>{isLogin ? "Welcome back" : "Create an account"}</h1>
                 <p className="subtitle">

@@ -1,55 +1,80 @@
+import { useMemo, useState } from "react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  LayoutDashboard,
-  Vault,
-  ScanSearch,
-  Users,
-  Link2,
-  ShieldCheck,
-  FileCheck,
   Activity,
   AlertTriangle,
   BarChart3,
-  Settings,
   Building2,
   ChevronDown,
+  CircleHelp,
+  FileCheck,
+  LayoutDashboard,
+  Link2,
+  LogOut,
+  ScanSearch,
+  Search,
+  Settings,
   ShieldAlert,
+  ShieldCheck,
+  Users,
+  Vault,
 } from "lucide-react";
+import "./AppSidebar.css";
 
-const mainNavItems = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Asset Vault", url: "/asset-vault", icon: Vault },
-  { title: "ZK Vault", url: "/zk-vault", icon: ShieldAlert },
-  { title: "AI Document Verification", url: "/ai-verification", icon: ScanSearch },
-  { title: "Nominee Governance", url: "/nominee-governance", icon: Users },
-  { title: "Blockchain Notarization", url: "/blockchain", icon: Link2 },
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+};
+
+const navigationGroups: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Workspace",
+    items: [
+      { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Asset Vault", url: "/asset-vault", icon: Vault },
+      { title: "ZK Vault", url: "/zk-vault", icon: ShieldAlert },
+      { title: "Document Verification", url: "/ai-verification", icon: ScanSearch },
+      { title: "Nominees", url: "/nominee-governance", icon: Users },
+      { title: "Notarization", url: "/blockchain", icon: Link2 },
+    ],
+  },
+  {
+    label: "Security",
+    items: [
+      { title: "Access Control", url: "/access-control", icon: ShieldCheck },
+      { title: "Compliance & Audit", url: "/compliance", icon: FileCheck },
+      { title: "Activity Ledger", url: "/activity-ledger", icon: Activity },
+      { title: "Risk Monitoring", url: "/risk-monitoring", icon: AlertTriangle },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { title: "Reports", url: "/reports", icon: BarChart3 },
+    ],
+  },
 ];
 
-const securityNavItems = [
-  { title: "Access Control", url: "/access-control", icon: ShieldCheck },
-  { title: "Compliance & Audit", url: "/compliance", icon: FileCheck },
-  { title: "Activity Ledger", url: "/activity-ledger", icon: Activity },
-  { title: "Risk Monitoring", url: "/risk-monitoring", icon: AlertTriangle },
-];
-
-const utilityNavItems = [
-  { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Organization Settings", url: "/settings", icon: Settings },
+const workspaces = [
+  { name: "Meridian Capital", plan: "Enterprise workspace", initials: "MC", tone: "mint" },
+  { name: "Family Vault", plan: "Personal workspace", initials: "FV", tone: "blue" },
+  { name: "Trustix Demo", plan: "Preview workspace", initials: "TD", tone: "violet" },
 ];
 
 function getInitials(name?: string, email?: string): string {
@@ -66,137 +91,176 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [query, setQuery] = useState("");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [workspace, setWorkspace] = useState(workspaces[0]);
 
-  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "User";
-  const email = user?.email || "";
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "Dashboard Preview";
+  const email = user?.email || "preview@trustix.app";
   const initials = getInitials(fullName, email);
+
+  const visibleGroups = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return navigationGroups;
+
+    return navigationGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => item.title.toLowerCase().includes(normalizedQuery)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [query]);
 
   const isActive = (path: string) =>
     path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
-        {!collapsed ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 flex items-center justify-center">
-                <img src="/logo.png" alt="Trustix Logo" className="h-8 w-8 object-contain" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">TRUSTIX</h2>
-                <p className="text-[10px] font-medium text-muted-foreground tracking-widest uppercase">Enterprise</p>
-              </div>
-            </div>
-            <button className="w-full flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent px-3 py-2 text-xs hover:bg-muted transition-colors">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="font-medium text-sidebar-accent-foreground">Meridian Capital Group</span>
-              </div>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
-            </button>
-            <div className="flex items-center gap-2 px-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-success" />
-              <span className="text-[10px] font-medium text-muted-foreground">Super Admin</span>
-            </div>
+    <Sidebar collapsible="icon" className="app-sidebar border-r border-sidebar-border">
+      <SidebarHeader className="app-sidebar-header">
+        <div className="app-brand-row">
+          <img src="/trustixlogo.png" alt="Trustix" className="app-brand-mark" />
+          <div className="app-brand-copy">
+            <img src="/trustixname.png" alt="Trustix" className="app-brand-name" />
+            <span>Secure workspace</span>
           </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="h-8 w-8 flex items-center justify-center">
-              <img src="/logo.png" alt="Trustix Logo" className="h-8 w-8 object-contain" />
-            </div>
+        </div>
+
+        {!collapsed && (
+          <div className="app-workspace-wrap">
+            <button
+              type="button"
+              className="app-workspace-switcher"
+              onClick={() => setWorkspaceOpen((open) => !open)}
+              aria-expanded={workspaceOpen}
+            >
+              <span className={`app-workspace-avatar ${workspace.tone}`}>{workspace.initials}</span>
+              <span className="app-workspace-text">
+                <strong>{workspace.name}</strong>
+                <small>{workspace.plan}</small>
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </button>
+
+            {workspaceOpen && (
+              <div className="app-workspace-popover">
+                {workspaces.map((item) => (
+                  <button
+                    type="button"
+                    key={item.name}
+                    className={`app-workspace-option ${item.name === workspace.name ? "is-selected" : ""}`}
+                    onClick={() => {
+                      setWorkspace(item);
+                      setWorkspaceOpen(false);
+                    }}
+                  >
+                    <span className={`app-workspace-avatar ${item.tone}`}>{item.initials}</span>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.plan}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground px-3 mb-1">
-            Platform
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/dashboard"}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="app-sidebar-content">
+        {!collapsed && (
+          <label className="app-sidebar-search">
+            <Search className="h-4 w-4" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search navigation"
+              aria-label="Search navigation"
+            />
+          </label>
+        )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground px-3 mb-1">
-            Security
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {securityNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground px-3 mb-1">
-            System
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {utilityNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleGroups.map((group) => (
+          <SidebarGroup key={group.label} className="app-nav-group">
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/dashboard"}
+                        className="app-nav-link"
+                        activeClassName="is-active"
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        {!collapsed && (
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary">{initials}</span>
+      <SidebarFooter className="app-sidebar-footer">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Settings">
+              <NavLink to="/settings" className="app-nav-link" activeClassName="is-active">
+                <Settings className="h-4 w-4 shrink-0" />
+                <span>Settings</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton className="app-nav-link" tooltip="Help & support">
+              <CircleHelp className="h-4 w-4 shrink-0" />
+              <span>Help & support</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <div className="app-account-wrap">
+          {!collapsed && accountOpen && (
+            <div className="app-account-popover">
+              <div className="app-account-summary">
+                <span className="app-account-avatar">{initials}</span>
+                <span>
+                  <strong>{fullName}</strong>
+                  <small>{email}</small>
+                </span>
+              </div>
+              <button type="button" onClick={handleSignOut} className="app-account-action">
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{fullName}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{email}</p>
-            </div>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            className="app-account-trigger"
+            onClick={() => setAccountOpen((open) => !open)}
+            aria-expanded={accountOpen}
+          >
+            <span className="app-account-avatar">{initials}</span>
+            <span className="app-account-text">
+              <strong>{fullName}</strong>
+              <small>{email}</small>
+            </span>
+            {!collapsed && <ChevronDown className="h-4 w-4" />}
+          </button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

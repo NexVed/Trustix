@@ -1,5 +1,9 @@
--- Create zero_knowledge_vaults table
-CREATE TABLE zero_knowledge_vaults (
+-- ==============================================================================
+-- Zero Knowledge Vault Setup SQL for Supabase
+-- Note: A complete setup containing all system tables is available in backend/supabase_schema.sql
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS zero_knowledge_vaults (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     hashed_key TEXT NOT NULL,
     encrypted_data TEXT,
@@ -21,3 +25,4 @@ CREATE POLICY "Users can insert own zk vault" ON zero_knowledge_vaults
 
 CREATE POLICY "Users can update own zk vault" ON zero_knowledge_vaults
     FOR UPDATE USING (auth.uid() = user_id);
+
