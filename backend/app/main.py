@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import vault, nominee, trigger, wallet, verification, profile, dashboard, documents, zerodha
+from app.routes import vault, nominee, trigger, wallet, verification, profile, dashboard, documents
 from app.routes import auth_routes
 from app.routes import activities as activities_routes
 from app.routes import settings as settings_routes
@@ -42,7 +42,7 @@ app.include_router(profile.router)
 app.include_router(zk_vault.router)
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(documents.router)
-app.include_router(zerodha.router)
+
 app.include_router(activities_routes.router)
 app.include_router(settings_routes.router)
 

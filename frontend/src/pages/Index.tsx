@@ -8,8 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useVault } from "@/contexts/VaultContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
-import { ZerodhaConnect } from "../components/zerodha/ZerodhaConnect";
-import { Portfolio } from "../components/zerodha/Portfolio";
 import { ConnectWallet } from "../components/wallet/ConnectWallet";
 import { SignMessage } from "../components/wallet/SignMessage";
 import { GenerateWallet } from "../components/wallet/GenerateWallet";
@@ -199,11 +197,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* Zerodha Portfolio Integration */}
-          <div className="mt-8">
-            <ZerodhaConnect />
-            <Portfolio />
-          </div>
+          
 
           {/* Web3 Wallet Integration */}
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4">

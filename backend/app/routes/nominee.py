@@ -29,11 +29,26 @@ def generate_nominee_key(request: NomineeAddSecureRequest, user_id: str = Depend
     """
     from app.utils.key_generator import generate_secret_key
     from app.utils.crypto import hash_key
+    from app.services.database import add_nominee_secure_record, get_vault_by_id
+    from app.services.email_service import send_inheritor_key_email
     
     nominee_secret_key = generate_secret_key()
     nominee_secret_key_hash = hash_key(nominee_secret_key)
     
     add_nominee_secure_record(request.vault_id, request.nominee_email, nominee_secret_key_hash)
+    
+    # Send email to nominee
+    vault = get_vault_by_id(request.vault_id)
+    vault_code = vault.get("vault_code", "") if vault else ""
+    send_inheritor_key_email(
+        email=request.nominee_email,
+        name=request.nominee_email.split("@")[0],
+        role="Inheritor",
+        secret_key=nominee_secret_key,
+        vault_code=vault_code,
+        threshold=1,
+        total_keys=1
+    )
     
     return {
         "status": "success",

@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from typing import List, Optional
 import uuid
 from datetime import datetime
-from app.services.database import get_supabase_client
+from app.services.database import get_supabase_client, save_document_reference
 from app.services.encryption_service import encrypt_pdf_bytes, decrypt_pdf_bytes
 from app.services.gcs_service import gcs_service
+from app.services.ocr import extract_text_from_image, get_document_hash
 from app.middleware.vault_auth import verify_vault_jwt
-from app.schema.document_model import DocumentResponse
+from app.schema.document_model import DocumentResponse, VaultDocumentResponse
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -171,3 +172,105 @@ async def delete_document(
     supabase.table("documents").delete().eq("id", document_id).execute()
     
     return {"status": "success", "detail": "Document permanently deleted."}
+
+
+@router.post("/preserve-original", response_model=VaultDocumentResponse)
+async def preserve_original_document(
+    file: UploadFile = File(...),
+    document_type: str = Form(...),
+    session: dict = Depends(verify_vault_jwt)
+):
+    """
+    Preserve an original document for future forgery detection.
+    This stores the original document (unencrypted) in GCS and extracts OCR text
+    for comparison. Only the vault owner can preserve originals.
+    """
+    vault_id = session.get("vault_id")
+    if not vault_id:
+        raise HTTPException(status_code=403, detail="Vault session invalid or missing vault_id")
+        
+    role = session.get("role")
+    if role != "owner":
+        raise HTTPException(status_code=403, detail="Only the vault owner can preserve original documents.")
+    
+    # Allow images and PDFs for original documents
+    allowed_types = {"image/jpeg", "image/png", "application/pdf"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, and PDF files are allowed for original documents.")
+    
+    if len(file_bytes := await file.read()) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+    
+    # Upload original to GCS (preserved as-is, not encrypted)
+    timestamp = int(datetime.utcnow().timestamp())
+    random_id = str(uuid.uuid4())[:8]
+    ext = "pdf" if file.content_type == "application/pdf" else ("jpg" if "jpeg" in file.content_type else "png")
+    gcs_path = f"{vault_id}/originals/{document_type}/{timestamp}-{random_id}.{ext}"
+    
+    try:
+        gcs_url = gcs_service.upload_file(
+            destination_blob_name=gcs_path,
+            file_bytes=file_bytes,
+            content_type=file.content_type
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage service unavailable: {e}")
+    
+    # Extract OCR text for comparison
+    try:
+        ocr_text = extract_text_from_image(file_bytes)
+    except Exception as e:
+        # If OCR fails, we still store the document but without OCR text
+        ocr_text = ""
+    
+    # Calculate document hash
+    doc_hash = get_document_hash(ocr_text) if ocr_text else ""
+    
+    # Save reference to vault_documents table
+    user_email = session.get("email", "unknown_user@example.com")
+    doc_id = str(uuid.uuid4())
+    
+    doc_data = {
+        "id": doc_id,
+        "vault_id": vault_id,
+        "document_type": document_type,
+        "original_file_name": file.filename,
+        "gcs_path": gcs_path,
+        "ocr_text": ocr_text,
+        "document_hash": doc_hash,
+        "uploaded_by": user_email
+    }
+    
+    try:
+        saved_doc = save_document_reference(vault_id, doc_data)
+    except Exception as e:
+        # Rollback GCS if DB fails
+        gcs_service.delete_file(gcs_path)
+        raise HTTPException(status_code=500, detail=f"Failed to save document reference: {str(e)}")
+    
+    return VaultDocumentResponse(**saved_doc)
+
+
+@router.get("/originals", response_model=List[VaultDocumentResponse])
+async def list_original_documents(
+    document_type: Optional[str] = None,
+    session: dict = Depends(verify_vault_jwt)
+):
+    """
+    List preserved original documents for a vault.
+    """
+    vault_id = session.get("vault_id")
+    if not vault_id:
+        raise HTTPException(status_code=403, detail="Vault session invalid.")
+        
+    role = session.get("role")
+    if role != "owner":
+        raise HTTPException(status_code=403, detail="Only the vault owner can view original documents.")
+    
+    supabase = get_supabase_client()
+    query = supabase.table("vault_documents").select("*").eq("vault_id", vault_id)
+    if document_type:
+        query = query.eq("document_type", document_type)
+        
+    response = query.order("created_at", desc=True).execute()
+    return [VaultDocumentResponse(**doc) for doc in response.data]

@@ -79,42 +79,43 @@ CREATE TRIGGER on_auth_user_created
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.vaults (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    vault_code TEXT UNIQUE,
-    owner_secret_key_hash TEXT,
-    file_url TEXT,
-    blockchain_hash TEXT,
-    failed_attempts INTEGER DEFAULT 0,
+    vault_code TEXT UNIQUE NOT NULL,
+    threshold INTEGER NOT NULL DEFAULT 1,
+    owner_secret_key_hash TEXT NOT NULL,
     is_locked BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL
+    failed_attempts INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_vaults_user_id ON public.vaults(user_id);
 CREATE INDEX IF NOT EXISTS idx_vaults_vault_code ON public.vaults(vault_code);
 
 ALTER TABLE public.vaults ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own vaults" 
-    ON public.vaults FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own vaults" 
-    ON public.vaults FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own vaults" 
-    ON public.vaults FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own vaults" 
-    ON public.vaults FOR DELETE USING (auth.uid() = user_id);
-
-DROP TRIGGER IF EXISTS tr_vaults_updated_at ON public.vaults;
-CREATE TRIGGER tr_vaults_updated_at
-    BEFORE UPDATE ON public.vaults
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- No RLS policies needed - vault access is via vault_code + keys, not user auth
 
 
 -- ==============================================================================
--- 3. NOMINEES TABLE
+-- VAULT INHERITORS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.vault_inheritors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    vault_id UUID NOT NULL REFERENCES public.vaults(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL, -- 'child', 'wife', 'lawyer', 'relative', 'other'
+    email TEXT NOT NULL,
+    secret_key_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_inheritors_vault_id ON public.vault_inheritors(vault_id);
+
+ALTER TABLE public.vault_inheritors ENABLE ROW LEVEL SECURITY;
+
+-- No RLS - accessed via vault context only
+
+
+-- ==============================================================================
+-- 3. NOMINEES TABLE (Legacy - keeping for backward compatibility)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.nominees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -278,6 +279,36 @@ CREATE POLICY "Vault owners and authorized users can access documents"
         EXISTS (
             SELECT 1 FROM public.vaults 
             WHERE public.vaults.id = public.documents.vault_id 
+            AND public.vaults.user_id = auth.uid()
+        )
+    );
+
+
+-- ==============================================================================
+-- VAULT DOCUMENT REFERENCES TABLE (for forgery detection)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.vault_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    vault_id UUID NOT NULL REFERENCES public.vaults(id) ON DELETE CASCADE,
+    document_type TEXT NOT NULL, -- 'death_certificate', 'id_proof', 'will', 'property_deed', etc.
+    original_file_name TEXT NOT NULL,
+    gcs_path TEXT NOT NULL, -- path to the preserved original document
+    ocr_text TEXT, -- extracted text from OCR.space for comparison
+    document_hash TEXT, -- SHA256 hash of normalized OCR text
+    uploaded_by TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_documents_vault_id ON public.vault_documents(vault_id);
+CREATE INDEX IF NOT EXISTS idx_vault_documents_type ON public.vault_documents(document_type);
+
+ALTER TABLE public.vault_documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Vault owners can manage document references" 
+    ON public.vault_documents FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.vaults 
+            WHERE public.vaults.id = public.vault_documents.vault_id 
             AND public.vaults.user_id = auth.uid()
         )
     );

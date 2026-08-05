@@ -1,185 +1,99 @@
 from supabase import create_client, Client
 from app.config import settings
 from fastapi import HTTPException
+from typing import Optional, List, Dict, Any
+import json
 
-# Initialize Supabase client for database operations (using service role to bypass RLS for internal operations, or perform backend admin tasks)
+# Initialize Supabase client for database operations (using service role to bypass RLS for internal operations)
 def get_supabase_client() -> Client:
     if not settings.supabase_url or not settings.supabase_service_role_key:
         raise HTTPException(status_code=500, detail="Supabase service role key or URL not configured.")
     return create_client(settings.supabase_url, settings.supabase_service_role_key)
 
-def save_vault_metadata(user_id: str, file_url: str, blockchain_hash: str):
+
+# ============================================================
+# VAULT FUNCTIONS (No user authentication - vault-based access)
+# ============================================================
+
+def create_vault(
+    vault_code: str,
+    threshold: int,
+    inheritors: List[Dict[str, Any]],
+    owner_secret_key_hash: str
+) -> Optional[Dict]:
+    """
+    Create a new vault with threshold and inheritors.
+    inheritors: List of {name, role, secret_key_hash}
+    """
     client = get_supabase_client()
     try:
-        data = {
-            "user_id": user_id,
-            "file_url": file_url,
-            "blockchain_hash": blockchain_hash
-        }
-        # Upsert vault data assuming 1 vault per user, or insert a new record
-        response = client.table("vaults").upsert(data).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save vault metadata: {str(e)}")
-
-def add_nominee_to_db(user_id: str, nominee_email: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "user_id": user_id,
-            "nominee_email": nominee_email
-        }
-        # Insert nominee
-        response = client.table("nominees").insert(data).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add nominee: {str(e)}")
-
-def link_wallet_to_user_db(user_id: str, wallet_address: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "user_id": user_id,
-            "wallet_address": wallet_address
-        }
-        # Upsert user wallet info
-        response = client.table("wallets").upsert(data).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to link wallet: {str(e)}")
-
-def save_secure_profile(user_id: str, encrypted_blob: str, salt: str, iv: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "user_id": user_id,
-            "encrypted_blob": encrypted_blob,
-            "salt": salt,
-            "iv": iv
-        }
-        # Upsert user secure profile (on duplicate user_id, update)
-        response = client.table("user_secure_profiles").upsert(
-            data, on_conflict="user_id"
-        ).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save secure profile: {str(e)}")
-
-def get_secure_profile(user_id: str):
-    client = get_supabase_client()
-    try:
-        response = client.table("user_secure_profiles").select("encrypted_blob, salt, iv").eq("user_id", user_id).execute()
-        if not response.data:
-            return None
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve secure profile: {str(e)}")
-
-
-def upsert_user_profile(user_id: str, email: str, full_name: str = "", avatar_url: str = ""):
-    client = get_supabase_client()
-    try:
-        data = {
-            "id": user_id,
-            "email": email,
-            "full_name": full_name or None,
-            "avatar_url": avatar_url or None,
-            "last_sign_in_at": "now()",
-        }
-        response = client.table("users").upsert(
-            data, on_conflict="id"
-        ).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upsert user profile: {str(e)}")
-
-
-def get_user_profile(user_id: str):
-    client = get_supabase_client()
-    try:
-        response = client.table("users").select("*").eq("id", user_id).execute()
-        if not response.data:
-            return None
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve user profile: {str(e)}")
-
-def init_zk_vault(user_id: str, hashed_key: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "user_id": user_id,
-            "hashed_key": hashed_key
-        }
-        response = client.table("zero_knowledge_vaults").insert(data).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to initialize vault: {str(e)}")
-
-def get_zk_vault(user_id: str):
-    client = get_supabase_client()
-    try:
-        response = client.table("zero_knowledge_vaults").select("*").eq("user_id", user_id).execute()
-        if not response.data:
-            return None
-        return response.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve vault: {str(e)}")
-
-def update_zk_vault_data(user_id: str, encrypted_data: str, iv: str, auth_tag: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "encrypted_data": encrypted_data,
-            "iv": iv,
-            "auth_tag": auth_tag
-        }
-        response = client.table("zero_knowledge_vaults").update(data).eq("user_id", user_id).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update vault data: {str(e)}")
-
-def create_vault_record(user_id: str, vault_code: str, owner_secret_key_hash: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "user_id": user_id,
+        vault_data = {
             "vault_code": vault_code,
-            "owner_secret_key_hash": owner_secret_key_hash
+            "threshold": threshold,
+            "owner_secret_key_hash": owner_secret_key_hash,
+            "is_locked": False,
+            "failed_attempts": 0
         }
-        response = client.table("vaults").insert(data).execute()
-        return response.data[0] if response.data else None
+        response = client.table("vaults").insert(vault_data).execute()
+        if not response.data:
+            return None
+        
+        vault = response.data[0]
+        vault_id = vault["id"]
+        
+        # Add inheritors
+        for inheritor in inheritors:
+            client.table("vault_inheritors").insert({
+                "vault_id": vault_id,
+                "name": inheritor["name"],
+                "role": inheritor["role"],
+                "secret_key_hash": inheritor["secret_key_hash"]
+            }).execute()
+        
+        return vault
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create vault record: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create vault: {str(e)}")
 
-def add_nominee_secure_record(vault_id: str, nominee_email: str, nominee_secret_key_hash: str):
-    client = get_supabase_client()
-    try:
-        data = {
-            "vault_id": vault_id,
-            "nominee_email": nominee_email,
-            "nominee_secret_key_hash": nominee_secret_key_hash
-        }
-        response = client.table("nominees").insert(data).execute()
-        return response.data[0] if response.data else None
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add secure nominee: {str(e)}")
 
-def update_nominee_ocr_status(vault_id: str, nominee_email: str):
-    client = get_supabase_client()
-    try:
-        response = client.table("nominees").update({"is_ocr_verified": True}).eq("vault_id", vault_id).eq("nominee_email", nominee_email).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update OCR verification status: {str(e)}")
-
-def get_vault_by_code(vault_code: str):
+def get_vault_by_code(vault_code: str) -> Optional[Dict]:
+    """Get vault by code."""
     client = get_supabase_client()
     try:
         response = client.table("vaults").select("*").eq("vault_code", vault_code).execute()
         return response.data[0] if response.data else None
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch vault by code: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch vault: {str(e)}")
+
+
+def get_vault_by_id(vault_id: str) -> Optional[Dict]:
+    """Get vault by ID."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vaults").select("*").eq("id", vault_id).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch vault: {str(e)}")
+
+
+def get_vault_inheritors(vault_id: str) -> List[Dict]:
+    """Get all inheritors for a vault."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vault_inheritors").select("*").eq("vault_id", vault_id).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        return []
+
+
+def get_vault_inheritors_with_keys(vault_id: str) -> List[Dict]:
+    """Get inheritors with their secret key hashes (for vault creation response)."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vault_inheritors").select("id, name, role, secret_key_hash").eq("vault_id", vault_id).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        return []
+
 
 def increment_failed_attempts(vault_id: str, current_attempts: int):
     client = get_supabase_client()
@@ -190,6 +104,7 @@ def increment_failed_attempts(vault_id: str, current_attempts: int):
     except Exception as e:
         pass
 
+
 def reset_failed_attempts(vault_id: str):
     client = get_supabase_client()
     try:
@@ -198,6 +113,7 @@ def reset_failed_attempts(vault_id: str):
         return response.data
     except Exception as e:
         pass
+
 
 def lock_vault(vault_id: str):
     client = get_supabase_client()
@@ -208,87 +124,217 @@ def lock_vault(vault_id: str):
     except Exception as e:
         pass
 
-def get_nominees_by_vault_id(vault_id: str):
+
+# ============================================================
+# DOCUMENT FUNCTIONS
+# ============================================================
+
+def save_document_metadata(vault_id: str, file_name: str, category: str, gcs_path: str, encryption_iv: str) -> Optional[Dict]:
+    """Save document metadata to vault_documents table."""
     client = get_supabase_client()
     try:
-        response = client.table("nominees").select("*").eq("vault_id", vault_id).execute()
+        data = {
+            "vault_id": vault_id,
+            "file_name": file_name,
+            "category": category,
+            "gcs_path": gcs_path,
+            "encryption_iv": encryption_iv
+        }
+        response = client.table("vault_documents").insert(data).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save document: {str(e)}")
+
+
+def get_vault_documents(vault_id: str, category: Optional[str] = None) -> List[Dict]:
+    """Get all documents for a vault."""
+    client = get_supabase_client()
+    try:
+        query = client.table("vault_documents").select("*").eq("vault_id", vault_id)
+        if category:
+            query = query.eq("category", category)
+        response = query.order("created_at", desc=True).execute()
         return response.data if response.data else []
     except Exception as e:
         return []
 
-def link_wallet_to_user_db(user_id: str, wallet_address: str):
+
+def get_document_by_id(vault_id: str, document_id: str) -> Optional[Dict]:
+    """Get specific document."""
     client = get_supabase_client()
     try:
-        data = {"wallet_address": wallet_address}
-        response = client.table("users").update(data).eq("id", user_id).execute()
-        return response.data
+        response = client.table("vault_documents").select("*").eq("id", document_id).eq("vault_id", vault_id).execute()
+        return response.data[0] if response.data else None
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to link wallet: {str(e)}")
+        return None
 
-def store_encrypted_wallet_db(user_id: str, address: str, encrypted_key: str, iv: str, auth_tag: str):
+
+def delete_document(vault_id: str, document_id: str) -> bool:
+    """Delete document metadata."""
+    client = get_supabase_client()
+    try:
+        client.table("vault_documents").delete().eq("id", document_id).eq("vault_id", vault_id).execute()
+        return True
+    except Exception as e:
+        return False
+
+
+# ============================================================
+# ORIGINAL DOCUMENT REFERENCES (for forgery detection)
+# ============================================================
+
+def save_original_document_reference(vault_id: str, document_data: dict) -> Optional[Dict]:
+    """Save original document reference with OCR text and hash."""
+    client = get_supabase_client()
+    try:
+        data = {"vault_id": vault_id, **document_data}
+        response = client.table("vault_document_references").insert(data).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save document reference: {str(e)}")
+
+
+def get_vault_original_documents(vault_id: str, document_type: Optional[str] = None) -> List[Dict]:
+    """Get preserved original documents for a vault."""
+    client = get_supabase_client()
+    try:
+        query = client.table("vault_document_references").select("*").eq("vault_id", vault_id)
+        if document_type:
+            query = query.eq("document_type", document_type)
+        response = query.order("created_at", desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        return []
+
+
+def get_original_document_by_id(vault_id: str, document_id: str) -> Optional[Dict]:
+    """Get specific original document reference."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vault_document_references").select("*").eq("id", document_id).eq("vault_id", vault_id).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        return None
+
+
+# ============================================================
+# ACTIVITY LOGGING
+# ============================================================
+
+def log_activity(vault_id: str, action: str, entity: str, type: str = "Success", details: Optional[Dict] = None):
+    """Log activity for audit trail."""
     client = get_supabase_client()
     try:
         data = {
-            "user_id": user_id,
-            "wallet_address": address,
-            "encrypted_private_key": encrypted_key,
-            "iv": iv,
-            "auth_tag": auth_tag
+            "vault_id": vault_id,
+            "action": action,
+            "entity": entity,
+            "type": type,
+            "details": details
         }
-        # Upsert custodial wallet record for user
-        response = client.table("custodial_wallets").upsert(data, on_conflict="user_id").execute()
-        return response.data
+        client.table("vault_activities").insert(data).execute()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store encrypted wallet: {str(e)}")
+        pass  # Silent fail for logging
 
-def get_custodial_wallet_db(user_id: str):
+
+def get_vault_activities(vault_id: str, limit: int = 50) -> List[Dict]:
+    """Get activity log for vault."""
     client = get_supabase_client()
     try:
-        response = client.table("custodial_wallets").select("*").eq("user_id", user_id).execute()
-        return response.data[0] if response.data else None
+        response = client.table("vault_activities").select("*").eq("vault_id", vault_id).order("created_at", desc=True).limit(limit).execute()
+        return response.data if response.data else []
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch custodial wallet: {str(e)}")
+        return []
 
 
-def get_vaults_for_user(user_id: str):
-    """Return list of vault records for a user."""
+# ============================================================
+# VAULT STATUS / DASHBOARD
+# ============================================================
+
+def get_vault_summary(vault_id: str) -> Optional[Dict]:
+    """Get vault summary for dashboard."""
     client = get_supabase_client()
     try:
-        response = client.table("vaults").select("*").eq("user_id", user_id).execute()
+        # Get vault
+        vault_resp = client.table("vaults").select("*").eq("id", vault_id).execute()
+        if not vault_resp.data:
+            return None
+        vault = vault_resp.data[0]
+        
+        # Get inheritors
+        inheritors = get_vault_inheritors(vault_id)
+        
+        # Get document counts
+        docs_resp = client.table("vault_documents").select("category", count="exact").eq("vault_id", vault_id).execute()
+        
+        return {
+            "vault": vault,
+            "inheritors": inheritors,
+            "document_count": docs_resp.count or 0,
+            "threshold": vault.get("threshold", 1)
+        }
+    except Exception as e:
+        return None
+
+
+# ============================================================
+# EMAIL HELPER FUNCTIONS
+# ============================================================
+
+def get_user_email(user_id: str) -> Optional[str]:
+    """Get user email from auth.users or profiles table."""
+    client = get_supabase_client()
+    try:
+        # Try to get from auth.users via service role
+        response = client.auth.admin.get_user_by_id(user_id)
+        if response.user and response.user.email:
+            return response.user.email
+    except Exception:
+        pass
+    try:
+        # Fallback: check profiles table
+        response = client.table("profiles").select("email").eq("id", user_id).execute()
+        if response.data:
+            return response.data[0].get("email")
+    except Exception:
+        pass
+    return None
+
+
+def get_nominee_emails(vault_id: str) -> List[str]:
+    """Get all nominee emails for a vault."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vault_inheritors").select("email").eq("vault_id", vault_id).execute()
+        return [n["email"] for n in response.data if n.get("email")]
+    except Exception:
+        return []
+
+
+def get_vaults_for_trigger_check() -> List[Dict]:
+    """Get vaults that need trigger checking (not triggered, has last_activity_at)."""
+    client = get_supabase_client()
+    try:
+        response = client.table("vaults").select("*").eq("is_triggered", False).not_.is_("last_activity_at", "null").execute()
         return response.data if response.data else []
     except Exception:
         return []
 
 
-def add_nominee_for_vault(vault_id: str, name: str, email: str, verification_level: str = "Level 1 — Basic", trigger_condition: str = "180-day inactivity", nominee_secret_key_hash: str = None):
-    """Insert a nominee with full profile fields and secret key hash for a vault."""
+def mark_vault_triggered(vault_id: str) -> bool:
+    """Mark vault as triggered."""
     client = get_supabase_client()
     try:
-        data = {
-            "vault_id": vault_id,
-            "nominee_email": email,
-            "name": name,
-            "verification_level": verification_level,
-            "trigger_condition": trigger_condition,
-            "legal_approval": "Pending Review",
-        }
-        if nominee_secret_key_hash:
-            data["nominee_secret_key_hash"] = nominee_secret_key_hash
-        response = client.table("nominees").insert(data).execute()
-        if response.data:
-            row = response.data[0]
-            return {
-                "id": row.get("id"),
-                "name": row.get("name", name),
-                "email": row.get("nominee_email", email),
-                "verification_level": row.get("verification_level", verification_level),
-                "legal_approval": row.get("legal_approval", "Pending Review"),
-                "trigger_condition": row.get("trigger_condition", trigger_condition),
-                "asset_count": 0,
-                "multi_party_status": "0/3 Approved",
-                "created_at": row.get("created_at", ""),
-            }
-        return None
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add nominee: {str(e)}")
+        from datetime import datetime
+        client.table("vaults").update({
+            "is_triggered": True,
+            "triggered_at": datetime.utcnow().isoformat()
+        }).eq("id", vault_id).execute()
+        return True
+    except Exception:
+        return False
 
+
+def log_trigger_activation(vault_id: str):
+    """Log trigger activation for audit trail."""
+    log_activity(vault_id, "trigger_activated", "vault", "Success", {"reason": "dead_man_switch"})

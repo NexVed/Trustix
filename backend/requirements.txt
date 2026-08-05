@@ -7,11 +7,13 @@ google-cloud-storage
 python-multipart
 supabase
 eth-account
-google-cloud-vision
+requests
 pillow
 python-dotenv
 bcrypt
 cryptography
 slowapi
-kiteconnect
+
+resend
 pycryptodome
+apscheduler

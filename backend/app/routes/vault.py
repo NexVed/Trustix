@@ -46,13 +46,21 @@ async def create_secure_vault(user_id: str = Depends(get_current_user)):
     """
     from app.utils.key_generator import generate_vault_code, generate_secret_key
     from app.utils.crypto import hash_key
-    from app.services.database import create_vault_record
+    from app.services.database import create_vault_record, get_user_email
+    from app.services.email_service import send_vault_created_notification
     
     vault_code = generate_vault_code()
     owner_secret_key = generate_secret_key()
     owner_secret_key_hash = hash_key(owner_secret_key)
     
     record = create_vault_record(user_id, vault_code, owner_secret_key_hash)
+    
+    # Send email notification to owner
+    owner_email = get_user_email(user_id)
+    if owner_email and record:
+        # Get inheritors for the email
+        inheritors_list = []  # Will be populated when nominees are added
+        send_vault_created_notification(owner_email, vault_code, inheritors_list, owner_secret_key)
     
     return {
         "status": "success",

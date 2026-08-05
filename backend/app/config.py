@@ -1,4 +1,6 @@
 from pydantic_settings import BaseSettings
+import os
+import json
 
 class Settings(BaseSettings):
     supabase_url: str = ""
@@ -22,6 +24,31 @@ class Settings(BaseSettings):
     polygon_chain_id: int = 137
     polygon_amoy_chain_id: int = 80002
 
+    # OCR.space Settings
+    ocr_space_api_key: str = ""
+
+    # Resend Email Settings
+    resend_api_key: str = ""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Auto-populate GCP settings from GOOGLE_APPLICATION_CREDENTIALS JSON file
+        if self.google_application_credentials and os.path.exists(self.google_application_credentials):
+            try:
+                with open(self.google_application_credentials, 'r') as f:
+                    creds = json.load(f)
+                    if not self.gcp_project_id:
+                        self.gcp_project_id = creds.get("project_id", "")
+                    if not self.gcp_client_email:
+                        self.gcp_client_email = creds.get("client_email", "")
+                    if not self.gcp_private_key:
+                        self.gcp_private_key = creds.get("private_key", "")
+            except Exception:
+                pass
+        
+        # Fallback: use GOOGLE_CLOUD_BUCKET for gcp_bucket_name
+        if not self.gcp_bucket_name and self.google_cloud_bucket:
+            self.gcp_bucket_name = self.google_cloud_bucket
 
     class Config:
         env_file = ".env"
