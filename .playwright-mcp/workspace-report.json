@@ -1,0 +1,16 @@
+{
+  "summary": {
+    "encrypted_assets": 8,
+    "active_nominees": 2
+  },
+  "events": [
+    {
+      "created_at": "2026-10-12T10:00:00Z",
+      "action": "Document uploaded",
+      "entity": "=SAMPLE.pdf",
+      "type": "Success"
+    }
+  ],
+  "total": 120,
+  "updated": "2026-10-12T10:48:35.466Z"
+}

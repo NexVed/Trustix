@@ -338,3 +338,99 @@ def mark_vault_triggered(vault_id: str) -> bool:
 def log_trigger_activation(vault_id: str):
     """Log trigger activation for audit trail."""
     log_activity(vault_id, "trigger_activated", "vault", "Success", {"reason": "dead_man_switch"})
+
+
+# ============================================================
+# ROUTE COMPATIBILITY HELPERS
+# ============================================================
+
+def save_vault_metadata(user_id: str, file_url: str, blockchain_hash: str) -> Optional[Dict]:
+    response = get_supabase_client().table("vault_metadata").insert({
+        "user_id": user_id,
+        "file_url": file_url,
+        "blockchain_hash": blockchain_hash,
+    }).execute()
+    return response.data[0] if response.data else None
+
+
+def add_nominee_to_db(user_id: str, nominee_email: str) -> Optional[Dict]:
+    response = get_supabase_client().table("nominees").insert({
+        "user_id": user_id,
+        "nominee_email": nominee_email,
+    }).execute()
+    return response.data[0] if response.data else None
+
+
+def add_nominee_secure_record(vault_id: str, nominee_email: str, nominee_secret_key_hash: str) -> Optional[Dict]:
+    response = get_supabase_client().table("nominees").insert({
+        "vault_id": vault_id,
+        "nominee_email": nominee_email,
+        "nominee_secret_key_hash": nominee_secret_key_hash,
+    }).execute()
+    return response.data[0] if response.data else None
+
+
+def save_secure_profile(user_id: str, encrypted_blob: str, salt: str, iv: str) -> Optional[Dict]:
+    response = get_supabase_client().table("user_secure_profiles").upsert({
+        "user_id": user_id,
+        "encrypted_blob": encrypted_blob,
+        "salt": salt,
+        "iv": iv,
+    }, on_conflict="user_id").execute()
+    return response.data[0] if response.data else None
+
+
+def get_secure_profile(user_id: str) -> Optional[Dict]:
+    response = get_supabase_client().table("user_secure_profiles").select("*").eq("user_id", user_id).execute()
+    return response.data[0] if response.data else None
+
+
+def save_document_reference(vault_id: str, document_data: Dict[str, Any]) -> Optional[Dict]:
+    response = get_supabase_client().table("vault_documents").insert(document_data).execute()
+    return response.data[0] if response.data else None
+
+
+def init_zk_vault(user_id: str, hashed_key: str) -> Optional[Dict]:
+    response = get_supabase_client().table("zero_knowledge_vaults").insert({
+        "user_id": user_id,
+        "hashed_key": hashed_key,
+    }).execute()
+    return response.data[0] if response.data else None
+
+
+def get_zk_vault(user_id: str) -> Optional[Dict]:
+    response = get_supabase_client().table("zero_knowledge_vaults").select("*").eq("user_id", user_id).execute()
+    return response.data[0] if response.data else None
+
+
+def update_zk_vault_data(user_id: str, encrypted_data: str, iv: str, auth_tag: str) -> Optional[Dict]:
+    response = get_supabase_client().table("zero_knowledge_vaults").update({
+        "encrypted_data": encrypted_data,
+        "iv": iv,
+        "auth_tag": auth_tag,
+    }).eq("user_id", user_id).execute()
+    return response.data[0] if response.data else None
+
+
+def link_wallet_to_user_db(user_id: str, wallet_address: str) -> Optional[Dict]:
+    response = get_supabase_client().table("wallets").insert({
+        "user_id": user_id,
+        "wallet_address": wallet_address,
+    }).execute()
+    return response.data[0] if response.data else None
+
+
+def store_encrypted_wallet_db(user_id: str, address: str, encrypted_key: str, iv: str, auth_tag: str) -> Optional[Dict]:
+    response = get_supabase_client().table("custodial_wallets").upsert({
+        "user_id": user_id,
+        "wallet_address": address,
+        "encrypted_private_key": encrypted_key,
+        "iv": iv,
+        "auth_tag": auth_tag,
+    }, on_conflict="user_id").execute()
+    return response.data[0] if response.data else None
+
+
+def get_custodial_wallet_db(user_id: str) -> Optional[Dict]:
+    response = get_supabase_client().table("custodial_wallets").select("*").eq("user_id", user_id).execute()
+    return response.data[0] if response.data else None

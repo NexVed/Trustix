@@ -24,7 +24,13 @@ class Settings(BaseSettings):
     polygon_chain_id: int = 137
     polygon_amoy_chain_id: int = 80002
 
-    # OCR.space Settings
+    # OCR credentials stay on the backend, never in NEXT_PUBLIC variables.
+    ocr_provider: str = "granite_docling"
+    hf_ocr_url: str = ""
+    hf_token: str = ""
+    hf_token_path: str = ""
+    hf_ocr_api_key: str = ""
+    hf_ocr_timeout_seconds: int = 600
     ocr_space_api_key: str = ""
 
     # Resend Email Settings

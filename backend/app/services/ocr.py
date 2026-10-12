@@ -1,49 +1,148 @@
-import os
+from pathlib import Path
+from urllib.parse import urlsplit
 import requests
 from fastapi import HTTPException
 from difflib import SequenceMatcher
 import hashlib
+from app.config import settings
 
 OCR_SPACE_API_URL = "https://api.ocr.space/parse/image"
-OCR_SPACE_API_KEY = os.environ.get("OCR_SPACE_API_KEY", "")
+MODEL_ID = "ibm-granite/granite-docling-258M"
+MAX_FILE_BYTES = 10 * 1024 * 1024
 
-def extract_text_from_image(file_bytes: bytes) -> str:
-    """
-    Extracts text from an image using OCR.space API.
-    """
-    if not OCR_SPACE_API_KEY:
-        raise HTTPException(status_code=500, detail="OCR.space API key not configured.")
-    
+
+def _file_type(data: bytes) -> tuple[str, str]:
+    if not data:
+        raise HTTPException(400, "The document is empty.")
+    if len(data) > MAX_FILE_BYTES:
+        raise HTTPException(413, "Maximum document size is 10 MB.")
+    if data.startswith(b"%PDF-"):
+        return "pdf", "application/pdf"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png", "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg", "image/jpeg"
+    raise HTTPException(415, "Choose a PDF, PNG, or JPEG document.")
+
+
+def _hf_token() -> str:
+    if settings.hf_token:
+        return settings.hf_token.strip()
+    if settings.hf_token_path:
+        try:
+            return Path(settings.hf_token_path).expanduser().read_text().strip()
+        except OSError:
+            pass
+    return ""
+
+
+def _space_url() -> str:
+    url = settings.hf_ocr_url.rstrip("/")
     try:
-        files = {"file": ("image.jpg", file_bytes, "image/jpeg")}
-        data = {
-            "apikey": OCR_SPACE_API_KEY,
-            "language": "eng",
-            "isOverlayRequired": False,
-            "filetype": "JPG",
-            "detectOrientation": True,
-            "scale": True,
-            "OCREngine": 2
-        }
-        
-        response = requests.post(OCR_SPACE_API_URL, files=files, data=data, timeout=30)
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        raise HTTPException(503, "The configured OCR Space address is invalid.")
+    if (parsed.scheme != "https" or not (parsed.hostname or "").endswith(".hf.space")
+            or parsed.username or parsed.password or parsed.query or parsed.fragment
+            or parsed.path not in ("", "/") or port not in (None, 443)):
+        raise HTTPException(503, "Configure HF_OCR_URL with the private Space's https://...hf.space address.")
+    return url
+
+
+def get_ocr_status() -> dict:
+    configured = False
+    if settings.ocr_provider == "granite_docling":
+        try:
+            _space_url()
+            configured = bool(_hf_token() and settings.hf_ocr_api_key)
+        except (HTTPException, ValueError):
+            pass
+    elif settings.ocr_provider == "ocr_space":
+        configured = bool(settings.ocr_space_api_key)
+    return {"provider": settings.ocr_provider, "model": MODEL_ID if settings.ocr_provider == "granite_docling" else "OCR.space",
+            "configured": configured, "max_file_bytes": MAX_FILE_BYTES, "max_pages": 5}
+
+
+def extract_document(file_bytes: bytes) -> dict:
+    extension, mime = _file_type(file_bytes)
+    files = {"file": (f"document.{extension}", file_bytes, mime)}
+    if settings.ocr_provider == "ocr_space":
+        return _legacy_extract(files, extension)
+    if settings.ocr_provider != "granite_docling":
+        raise HTTPException(503, "Unsupported OCR provider configured.")
+    url = _space_url()
+    token = _hf_token()
+    if not token or not settings.hf_ocr_api_key:
+        raise HTTPException(503, "OCR is not configured. Set the backend Hugging Face credentials.")
+    try:
+        response = requests.post(
+            f"{url}/ocr", files=files,
+            headers={"Authorization": f"Bearer {token}", "X-Trustix-OCR-Key": settings.hf_ocr_api_key},
+            timeout=(15, max(30, min(settings.hf_ocr_timeout_seconds, 900))),
+            allow_redirects=False,
+        )
+    except requests.Timeout:
+        raise HTTPException(504, "OCR timed out. The Space may still be starting; retry with a smaller document.")
+    except requests.RequestException:
+        raise HTTPException(503, "The OCR Space is unavailable. Please retry shortly.")
+    if response.status_code in (401, 403):
+        raise HTTPException(503, "OCR credentials were rejected. Check the backend Space token and API key.")
+    if response.status_code == 429:
+        raise HTTPException(429, "The OCR service is busy. Please retry shortly.")
+    if response.status_code in (400, 413, 415, 422):
+        messages = {400: "The document is empty or invalid.", 413: "Maximum document size is 10 MB.",
+                    415: "Choose a PDF, PNG, or JPEG document.",
+                    422: "Unable to read this document. Use an unlocked PDF of at most 5 pages, or a clear image."}
+        raise HTTPException(response.status_code, messages[response.status_code])
+    if response.status_code in (502, 503, 504):
+        raise HTTPException(503, "The OCR Space is starting or unavailable. Please retry shortly.")
+    if response.status_code != 200:
+        raise HTTPException(502, "The OCR Space returned an unexpected response.")
+    try:
+        result = response.json()
+    except ValueError:
+        raise HTTPException(502, "The OCR Space returned an invalid response.")
+    if (not isinstance(result, dict) or not isinstance(result.get("text"), str)
+            or not isinstance(result.get("markdown"), str)
+            or type(result.get("page_count")) is not int or not 1 <= result["page_count"] <= 10
+            or type(result.get("truncated")) is not bool or result.get("model") != MODEL_ID):
+        raise HTTPException(502, "The OCR Space returned an invalid extraction result.")
+    if not result["text"].strip():
+        raise HTTPException(422, "No readable text was found in this document.")
+    return {key: result.get(key) for key in (
+        "text", "markdown", "page_count", "model", "revision", "processing_seconds", "truncated", "incomplete_pages")}
+
+
+def _legacy_extract(files: dict, extension: str) -> dict:
+    # Legacy use is explicit; never silently send a private document to another provider.
+    if not settings.ocr_space_api_key:
+        raise HTTPException(503, "The legacy OCR provider is not configured.")
+    try:
+        response = requests.post(OCR_SPACE_API_URL, files=files, data={
+            "apikey": settings.ocr_space_api_key, "language": "eng", "filetype": extension.upper(),
+            "isOverlayRequired": False, "detectOrientation": True, "scale": True, "OCREngine": 2,
+        }, timeout=(10, 60))
         response.raise_for_status()
         result = response.json()
-        
         if result.get("IsErroredOnProcessing"):
-            error_msg = result.get("ErrorMessage", ["Unknown OCR error"])[0]
-            raise HTTPException(status_code=500, detail=f"OCR processing failed: {error_msg}")
-        
-        parsed_results = result.get("ParsedResults", [])
-        if not parsed_results:
-            return ""
-        
-        return parsed_results[0].get("ParsedText", "").strip()
-    
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"OCR service unavailable: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+            raise HTTPException(422, "The legacy OCR provider could not read this document.")
+        pages = result.get("ParsedResults", [])
+        text = "\n\n".join(page.get("ParsedText", "") for page in pages).strip()
+        if not text:
+            raise HTTPException(422, "No readable text was found in this document.")
+        return {"text": text, "markdown": text, "page_count": len(pages), "model": "OCR.space",
+                "truncated": False, "incomplete_pages": []}
+    except (requests.RequestException, ValueError, AttributeError, TypeError):
+        raise HTTPException(503, "The legacy OCR provider is unavailable.")
+
+
+def extract_text_from_image(file_bytes: bytes) -> str:
+    """Compatibility for existing checks; never approve using incomplete OCR output."""
+    result = extract_document(file_bytes)
+    if result["truncated"]:
+        raise HTTPException(422, "OCR extraction was incomplete. Use a shorter document before verification.")
+    return result["text"].strip()
 
 
 def calculate_text_similarity(text1: str, text2: str) -> float:

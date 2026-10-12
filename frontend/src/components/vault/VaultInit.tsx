@@ -28,7 +28,7 @@ export default function VaultInit({ onInitialized }: { onInitialized: () => void
         if (!key || !session) return;
         setLoading(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const response = await fetch(`${apiUrl}/zk-vault/init`, {
                 method: 'POST',
                 credentials: 'include',

@@ -1,41 +1,51 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { Bell, Search } from "lucide-react";
+import { AppSidebar, dashboardNavigation } from "@/components/AppSidebar";
+import { Search, Settings, ArrowUpRight, LogOut, ChevronDown } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useRouter } from "next/navigation";
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Your workspace";
+  const results = dashboardNavigation.filter(item => item.title.toLowerCase().includes(query.toLowerCase()));
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center justify-between border-b border-border px-4 bg-card">
-            <div className="flex items-center gap-3">
-              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-              <label className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5">
-                <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search assets, documents, nominees..."
-                  className="bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground w-64"
-                />
-              </label>
+    <SidebarProvider className="tx-shell" style={{ "--sidebar-width": "216px", "--sidebar-width-icon": "64px" } as React.CSSProperties}>
+      <AppSidebar />
+      <div className="tx-workspace">
+        <header className="tx-topbar">
+          <div className="tx-topbar-left">
+            <SidebarTrigger title="Toggle navigation" className="tx-mobile-trigger" />
+            <div className="tx-search-wrap">
+              <label className="tx-search"><Search size={16} /><input aria-label="Search workspace" placeholder="Search your workspace..." value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onKeyDown={e => { if (e.key === "Escape") { setFocused(false); setQuery(""); } }} /></label>
+              {focused && query && <div className="tx-search-results">
+                {results.length ? results.map(item => <Link onMouseDown={e => e.preventDefault()} key={item.url} href={item.url} onClick={() => { setQuery(""); setFocused(false); }}><item.icon size={16} />{item.title}<ArrowUpRight size={14} /></Link>) : <p>No matching pages</p>}
+              </div>}
             </div>
-            <button type="button" className="relative p-2 rounded-lg hover:bg-muted transition-colors" title="Notifications">
-              <Bell className="h-4 w-4 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-            </button>
-          </header>
-          <main className="flex-1 overflow-auto">
-            <div className="p-6 max-w-[1400px] mx-auto animate-fade-in">
-              {children}
-            </div>
-          </main>
-        </div>
+          </div>
+          <div className="tx-topbar-right">
+            <span className="tx-private"><ShieldDot /> Private workspace</span>
+            <Link className="tx-icon-button" href="/settings" title="Workspace settings" aria-label="Workspace settings"><Settings size={17} /></Link>
+            <Popover>
+              <PopoverTrigger asChild><button className="tx-profile"><span className="tx-avatar">{name.slice(0, 2).toUpperCase()}</span><span><strong>{name}</strong><small>{user?.email || "Personal account"}</small></span><ChevronDown size={14} /></button></PopoverTrigger>
+              <PopoverContent align="end" className="tx-account-menu">
+                <Link href="/settings"><Settings size={16} /> Account settings</Link>
+                <button onClick={async () => { await signOut(); router.push("/"); }}><LogOut size={16} />{user ? "Sign out" : "Leave preview"}</button>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </header>
+        <main className="tx-main">{children}</main>
       </div>
     </SidebarProvider>
   );
 }
+
+function ShieldDot() { return <span className="tx-status-dot" />; }

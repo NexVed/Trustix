@@ -6,6 +6,7 @@ from app.services.database import get_supabase_client, save_document_reference
 from app.services.encryption_service import encrypt_pdf_bytes, decrypt_pdf_bytes
 from app.services.gcs_service import gcs_service
 from app.services.ocr import extract_text_from_image, get_document_hash
+from starlette.concurrency import run_in_threadpool
 from app.middleware.vault_auth import verify_vault_jwt
 from app.schema.document_model import DocumentResponse, VaultDocumentResponse
 
@@ -218,7 +219,7 @@ async def preserve_original_document(
     
     # Extract OCR text for comparison
     try:
-        ocr_text = extract_text_from_image(file_bytes)
+        ocr_text = await run_in_threadpool(extract_text_from_image, file_bytes)
     except Exception as e:
         # If OCR fails, we still store the document but without OCR text
         ocr_text = ""

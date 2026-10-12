@@ -1,0 +1,7 @@
+fastapi==0.119.1
+uvicorn==0.38.0
+python-multipart==0.0.22
+transformers==4.57.1
+docling-core==2.101.1
+pillow==11.3.0
+pypdfium2==5.14.0

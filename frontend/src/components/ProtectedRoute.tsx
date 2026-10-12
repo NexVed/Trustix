@@ -1,4 +1,7 @@
-import { Navigate } from 'react-router-dom';
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -7,6 +10,11 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const { session, loading } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && !session) router.replace("/auth");
+    }, [loading, router, session]);
 
     if (loading) {
         return (
@@ -20,7 +28,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
 
     if (!session) {
-        return <Navigate to="/auth" replace />;
+        return null;
     }
 
     return <>{children}</>;

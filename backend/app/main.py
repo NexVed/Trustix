@@ -19,7 +19,7 @@ app.state.limiter = zk_vault.limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Secure CORS middleware — allow local dev frontend + configured frontend URL
-allowed_origins = ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000"]
+allowed_origins = ["http://localhost:8080", "http://localhost:8081", "http://localhost:5173", "http://localhost:3000"]
 if settings.frontend_url:
     allowed_origins.append(settings.frontend_url)
 

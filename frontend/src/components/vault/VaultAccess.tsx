@@ -25,7 +25,7 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
         if (!vaultCode.trim()) return;
         setFetchingRequirements(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const response = await fetch(`${apiUrl}/vault/${vaultCode}/requirements`, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export default function VaultAccess({ onUnlocked }: { onUnlocked: (key: string) 
     const handleUnlock = async () => {
         setLoading(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const payload: any = { vault_code: vaultCode };

@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, Eye, EyeOff, AlertTriangle, Download, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
+import { Copy, Check, Eye, EyeOff, AlertTriangle, Download, ArrowRight, ShieldCheck, Lock, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { downloadPdf } from '@/lib/workspace-export';
+
+const IDENTIFIER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const SECRET_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+function createRandomValue(length: number, alphabet: string) {
+    const values = new Uint32Array(length);
+    crypto.getRandomValues(values);
+    return Array.from(values, (value) => alphabet[value % alphabet.length]).join('');
+}
 
 export default function VaultCreationPopup({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const [copiedCode, setCopiedCode] = useState(false);
@@ -12,13 +22,33 @@ export default function VaultCreationPopup({ isOpen, onClose }: { isOpen: boolea
     const [vaultCode, setVaultCode] = useState("Generating...");
     const [secretKey, setSecretKey] = useState("Generating...");
     const [generated, setGenerated] = useState(false);
+    const [generationError, setGenerationError] = useState("");
+    const [exporting, setExporting] = useState(false);
+    const [backupError, setBackupError] = useState("");
+    const [preview, setPreview] = useState(false);
 
     useEffect(() => {
         if (isOpen && !generated) {
             const generateVault = async () => {
                 try {
-                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
                     const { data: { session } } = await supabase.auth.getSession();
+
+                    // The dashboard preview deliberately bypasses sign-in in local development.
+                    // Do not send an unauthenticated request that will remain on "Generating...".
+                    if (!session?.access_token && process.env.NODE_ENV === 'development') {
+                        setPreview(true);
+                        setVaultCode(`TX-${createRandomValue(10, IDENTIFIER_ALPHABET)}`);
+                        setSecretKey(createRandomValue(48, SECRET_ALPHABET));
+                        setGenerated(true);
+                        return;
+                    }
+
+                    if (!session?.access_token) {
+                        setGenerationError('Sign in is required to create a persistent vault.');
+                        return;
+                    }
+
                     const response = await fetch(`${apiUrl}/vault/create`, {
                         method: 'POST',
                         headers: {
@@ -27,13 +57,16 @@ export default function VaultCreationPopup({ isOpen, onClose }: { isOpen: boolea
                         }
                     });
                     const data = await response.json();
-                    if (data.status === "success") {
+                    if (response.ok && data.status === "success") {
                         setVaultCode(data.vault_code);
                         setSecretKey(data.owner_secret_key);
                         setGenerated(true);
+                    } else {
+                        setGenerationError(data.detail || 'Unable to generate a vault key. Please try again.');
                     }
                 } catch (e) {
                     console.error("Failed to generate vault", e);
+                    setGenerationError('Unable to reach the vault service. Please try again.');
                 }
             };
             generateVault();
@@ -50,6 +83,24 @@ export default function VaultCreationPopup({ isOpen, onClose }: { isOpen: boolea
         navigator.clipboard.writeText(secretKey);
         setCopiedSecret(true);
         setTimeout(() => setCopiedSecret(false), 2000);
+    };
+
+    const downloadBackup = async () => {
+        if (!generated || generationError || exporting) return;
+        setExporting(true); setBackupError("");
+        try {
+            await downloadPdf(`trustix-${preview ? 'sample-' : ''}vault-backup-${vaultCode}.pdf`, {
+                title: preview ? "Sample vault backup" : "Vault recovery backup",
+                notice: preview
+                    ? "PREVIEW ONLY. These sample keys do not unlock a persistent vault."
+                    : "CONFIDENTIAL: This PDF contains your unencrypted owner secret key. Anyone with these credentials may access your vault. Store it offline in a secure location. Do not share it or upload it to public storage.",
+                sections: [
+                    { title: "Vault credentials", columns: ["Credential", "Value"], rows: [["Vault identifier", vaultCode], ["Owner secret key", secretKey]] },
+                    { title: "Recovery", columns: ["Instructions"], rows: [["Use the vault identifier and owner secret key to access your vault. Trustix cannot recover a lost secret key."], ["Keep this backup separate from your device and never include it in ordinary report exports."]] },
+                ],
+            });
+        } catch { setBackupError("The backup PDF could not be created. Please retry before closing this window."); }
+        finally { setExporting(false); }
     };
 
     return (
@@ -110,6 +161,7 @@ export default function VaultCreationPopup({ isOpen, onClose }: { isOpen: boolea
                                     </div>
                                 </div>
                                 <p className="text-xs text-slate-500">Use this code to identify your vault when logging in.</p>
+                                {generationError && <p className="text-xs font-medium text-red-600">{generationError}</p>}
                             </div>
 
                             {/* SECTION 2: Owner Secret Key */}
@@ -165,11 +217,13 @@ export default function VaultCreationPopup({ isOpen, onClose }: { isOpen: boolea
                             {/* SECTION 3: Backup Options */}
                             <div className="pt-4 border-t border-slate-100 space-y-5">
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-xl transition-all">
-                                        <Download className="w-4 h-4 text-slate-400" />
-                                        <span>Download Backup PDF</span>
+                                    <button onClick={() => void downloadBackup()} disabled={!generated || !!generationError || exporting} className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-400" />}
+                                        <span>{exporting ? "Creating PDF..." : "Download Backup PDF"}</span>
                                     </button>
                                 </div>
+                                <p className="text-xs text-slate-500">{preview ? "Preview backup only; these keys do not unlock a saved vault." : "The PDF contains your unencrypted secret key. Store it securely and do not share it."}</p>
+                                {backupError && <p className="text-xs text-red-600" role="alert">{backupError}</p>}
 
                                 <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors group">
                                     <div className="relative flex items-center shrink-0 mt-0.5">

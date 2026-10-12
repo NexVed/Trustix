@@ -50,7 +50,7 @@ export default function NomineeGeneration() {
     const generateNewNominee = async () => {
         if (!newName || !newEmail) return;
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const { data: { session } } = await supabase.auth.getSession();
 
             // Decode Vault ID from the stored token

@@ -16,7 +16,7 @@ export default function VaultDashboard({ encryptionKey, onLock }: { encryptionKe
         const fetchVaultData = async () => {
             if (!session) return;
             try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
                 const response = await fetch(`${apiUrl}/zk-vault/data/retrieve`, {
                     method: 'POST',
                     credentials: 'include',
@@ -46,7 +46,7 @@ export default function VaultDashboard({ encryptionKey, onLock }: { encryptionKe
         if (!session) return;
         setSaving(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const response = await fetch(`${apiUrl}/zk-vault/data`, {
                 method: 'POST',
                 credentials: 'include',

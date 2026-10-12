@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -43,7 +45,7 @@ const clearAuthCookie = () => {
  * Falls back silently if the backend is unavailable.
  */
 async function syncUserProfile(session: Session) {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     try {
         await fetch(`${apiUrl}/auth/signup-sync`, {
             method: 'POST',

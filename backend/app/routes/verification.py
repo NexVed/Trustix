@@ -1,7 +1,10 @@
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, Query, Form
+from starlette.concurrency import run_in_threadpool
 from app.services.auth import get_current_user
 from app.services.ocr import (
     extract_text_from_image,
+    extract_document,
+    get_ocr_status,
     detect_forgery,
     verify_document_structure,
     get_document_hash
@@ -16,6 +19,24 @@ router = APIRouter(prefix="/verification", tags=["Verification"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+
+
+@router.get("/ocr/status")
+async def ocr_status(user_id: str = Depends(get_current_user)):
+    return await run_in_threadpool(get_ocr_status)
+
+
+@router.post("/ocr")
+async def extract_document_text(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    """Extract document content without saving it or making an identity decision."""
+    try:
+        if file.content_type not in ALLOWED_CONTENT_TYPES:
+            raise HTTPException(415, "Choose a PDF, PNG, or JPEG document.")
+        data = await file.read(MAX_FILE_SIZE + 1)
+        result = await run_in_threadpool(extract_document, data)
+        return {**result, "word_count": len(result["text"].split()), "text_length": len(result["text"])}
+    finally:
+        await file.close()
 
 
 @router.post("/document")
@@ -38,7 +59,7 @@ async def verify_uploaded_document(
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB.")
 
     # OCR Extraction in memory
-    extracted_text = extract_text_from_image(file_bytes)
+    extracted_text = await run_in_threadpool(extract_text_from_image, file_bytes)
 
     # Verification Logic - structure validation
     structure_result = verify_document_structure(extracted_text, document_type)
@@ -97,7 +118,7 @@ async def compare_document_with_original(
         raise HTTPException(status_code=400, detail="Original document text not available for comparison. Please re-process the original document.")
 
     # OCR on uploaded document
-    uploaded_text = extract_text_from_image(file_bytes)
+    uploaded_text = await run_in_threadpool(extract_text_from_image, file_bytes)
 
     # Detect forgery by comparing
     forgery_result = detect_forgery(uploaded_text, original_text, threshold=0.85)
@@ -131,7 +152,7 @@ async def analyze_document_for_fraud(
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
 
-    extracted_text = extract_text_from_image(file_bytes)
+    extracted_text = await run_in_threadpool(extract_text_from_image, file_bytes)
     structure_result = verify_document_structure(extracted_text, document_type)
     doc_hash = get_document_hash(extracted_text)
 
@@ -153,7 +174,7 @@ async def verify_nominee_identity(
 ):
     """
     Identity verification endpoint for Nominees unlocking a Vault.
-    Uploads ID to GCS, runs OCR.space OCR, and validates identity.
+    Uploads ID to GCS, runs the configured OCR provider, and checks document text.
     Returns a newly signed JWT with is_ocr_verified=True on success.
     """
     import jwt
@@ -195,8 +216,8 @@ async def verify_nominee_identity(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Storage service unavailable: {e}")
         
-    # Run OCR.space OCR
-    extracted_text = extract_text_from_image(file_bytes)
+    # Extraction is blocking network work; keep the event loop available.
+    extracted_text = await run_in_threadpool(extract_text_from_image, file_bytes)
     
     # Validation logic: fuzzy match name from email prefix
     name_hint = nominee_email.split("@")[0].replace(".", " ").lower()
@@ -224,7 +245,7 @@ async def verify_nominee_identity(
     
     return {
         "status": "success",
-        "message": "Identity successfully verified via OCR.space API.",
+        "message": "Document text matched the existing nominee check.",
         "access_token": token,
         "token_type": "bearer",
         "expires_in": 900

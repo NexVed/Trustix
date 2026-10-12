@@ -15,7 +15,7 @@ export default function ZkVaultAccess({ onUnlocked }: { onUnlocked: (key: string
         if (!keyInput.trim()) return;
         setLoading(true);
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             const response = await fetch(`${apiUrl}/zk-vault/verify`, {
                 method: 'POST',
                 credentials: 'include',

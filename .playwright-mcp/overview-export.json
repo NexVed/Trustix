@@ -1,0 +1,90 @@
+{
+  "sample": true,
+  "exported_at": "2026-10-12T10:47:43.504Z",
+  "metrics": {
+    "encrypted_assets": 32,
+    "verified_documents": 24,
+    "pending_triggers": 0,
+    "fraud_alerts": 0,
+    "notarizations": 8,
+    "active_nominees": 3
+  },
+  "charts": {
+    "vault_growth": [
+      {
+        "month": "May",
+        "assets": 9
+      },
+      {
+        "month": "Jun",
+        "assets": 14
+      },
+      {
+        "month": "Jul",
+        "assets": 12
+      },
+      {
+        "month": "Aug",
+        "assets": 21
+      },
+      {
+        "month": "Sep",
+        "assets": 26
+      },
+      {
+        "month": "Oct",
+        "assets": 32
+      }
+    ],
+    "asset_distribution": [
+      {
+        "name": "Documents",
+        "value": 45
+      },
+      {
+        "name": "Digital wallets",
+        "value": 25
+      },
+      {
+        "name": "Financial accounts",
+        "value": 20
+      },
+      {
+        "name": "Other assets",
+        "value": 10
+      }
+    ]
+  },
+  "recent_activity": [
+    {
+      "action": "Document verified",
+      "entity": "Property deed.pdf",
+      "type": "verify",
+      "time": "Today, 10:42 AM"
+    },
+    {
+      "action": "Nominee added",
+      "entity": "Sarah Mitchell",
+      "type": "nominee",
+      "time": "Today, 9:18 AM"
+    },
+    {
+      "action": "Asset encrypted",
+      "entity": "Investment portfolio",
+      "type": "vault",
+      "time": "Yesterday, 4:30 PM"
+    },
+    {
+      "action": "Record notarized",
+      "entity": "Family trust.pdf",
+      "type": "blockchain",
+      "time": "Yesterday, 2:15 PM"
+    },
+    {
+      "action": "Document uploaded",
+      "entity": "Insurance policy.pdf",
+      "type": "vault",
+      "time": "Oct 08, 11:20 AM"
+    }
+  ]
+}
