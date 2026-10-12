@@ -45,27 +45,25 @@ class GCSService:
     def is_configured(self) -> bool:
         return self.bucket is not None
 
-    def upload_file(self, destination_blob_name: str, file_bytes: bytes, content_type: str = "application/pdf") -> str:
+    def _require_configuration(self) -> None:
         if not self.is_configured():
-            # For local dev without GCS, we could write to disk or just simulate success
-            print("WARNING: GCS not configured. Simulating upload.")
-            return f"gs://{self.bucket_name}/{destination_blob_name}"
+            raise RuntimeError("Google Cloud Storage is not configured. Configure a replacement credential before using document storage.")
+
+    def upload_file(self, destination_blob_name: str, file_bytes: bytes, content_type: str = "application/pdf") -> str:
+        self._require_configuration()
 
         blob = self.bucket.blob(destination_blob_name)
         blob.upload_from_string(file_bytes, content_type=content_type)
         return f"gs://{self.bucket_name}/{destination_blob_name}"
 
     def download_file(self, blob_name: str) -> bytes:
-        if not self.is_configured():
-            print("WARNING: GCS not configured. Simulating download.")
-            return b"Simulated decrypted PDF content."
+        self._require_configuration()
             
         blob = self.bucket.blob(blob_name)
         return blob.download_as_bytes()
 
     def delete_file(self, blob_name: str) -> bool:
-        if not self.is_configured():
-            return True
+        self._require_configuration()
             
         blob = self.bucket.blob(blob_name)
         if blob.exists():
@@ -83,8 +81,7 @@ class GCSService:
          For this architecture, we will stream it via FastAPI so the backend can decrypt it before sending.
          This function remains available for standard usage.
         """
-        if not self.is_configured():
-            return f"http://localhost:8000/mock-download/{blob_name}"
+        self._require_configuration()
             
         blob = self.bucket.blob(blob_name)
         url = blob.generate_signed_url(
