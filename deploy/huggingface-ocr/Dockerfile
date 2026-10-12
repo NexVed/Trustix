@@ -7,11 +7,12 @@ ENV PYTHONUNBUFFERED=1 \
     HF_HOME=/home/appuser/.cache/huggingface \
     HF_HUB_DISABLE_TELEMETRY=1 \
     TOKENIZERS_PARALLELISM=false \
-    OMP_NUM_THREADS=2
+    OMP_NUM_THREADS=2 \
+    OCR_DEVICE=cpu
 
-COPY requirements.txt .
+COPY requirements-docker.txt .
 RUN pip install --no-cache-dir torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements-docker.txt
 
 COPY --chown=appuser:appuser app.py engine.py ./
 USER appuser

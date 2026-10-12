@@ -1,5 +1,7 @@
 import unittest
-from unittest.mock import Mock, patch
+import base64
+import json
+from unittest.mock import MagicMock, Mock, patch
 
 import requests
 from fastapi import HTTPException
@@ -18,7 +20,13 @@ class GraniteOCRTests(unittest.TestCase):
 
     def response(self, code=200):
         response = Mock(status_code=code)
-        response.json.return_value = self.result.copy()
+        response.json.return_value = {"event_id": "synthetic-event"}
+        return response
+
+    def stream(self, code=200, result=None):
+        response = MagicMock(status_code=code)
+        response.__enter__.return_value = response
+        response.iter_lines.return_value = ["event: complete", "data: " + json.dumps([result or self.result])]
         return response
 
     def assert_error(self, code, fn, *args):
@@ -27,17 +35,19 @@ class GraniteOCRTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, code)
         return caught.exception
 
+    @patch.object(ocr.requests, "get")
     @patch.object(ocr.requests, "post")
-    def test_private_headers_and_correct_file_types(self, post):
+    def test_private_headers_and_correct_file_types(self, post, get):
         post.return_value = self.response()
-        for data, suffix, mime in [(b"%PDF-sample", "pdf", "application/pdf"),
-                (b"\x89PNG\r\n\x1a\nsample", "png", "image/png"),
-                (b"\xff\xd8\xffsample", "jpg", "image/jpeg")]:
+        get.return_value = self.stream()
+        for data in [b"%PDF-sample", b"\x89PNG\r\n\x1a\nsample", b"\xff\xd8\xffsample"]:
             self.assertEqual(ocr.extract_document(data)["text"], "TRUSTIX SAMPLE")
             kwargs = post.call_args.kwargs
-            self.assertEqual(kwargs["files"]["file"], (f"document.{suffix}", data, mime))
+            self.assertEqual(kwargs["json"]["data"][0], base64.b64encode(data).decode())
+            self.assertEqual(kwargs["json"]["data"][1], "test-service-key")
             self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-private-token")
-            self.assertEqual(kwargs["headers"]["X-Trustix-OCR-Key"], "test-service-key")
+            self.assertEqual(post.call_args.args[0], "https://example-trustix-ocr.hf.space/gradio_api/call/ocr")
+            self.assertEqual(get.call_args.args[0], "https://example-trustix-ocr.hf.space/gradio_api/call/ocr/synthetic-event")
             self.assertFalse(kwargs["allow_redirects"])
 
     @patch.object(ocr.requests, "post")
@@ -48,8 +58,8 @@ class GraniteOCRTests(unittest.TestCase):
 
     @patch.object(ocr.requests, "post")
     def test_upstream_status_mapping(self, post):
-        for upstream, expected in [(401, 503), (403, 503), (429, 429), (422, 422),
-                                   (413, 413), (503, 503), (302, 502), (500, 502)]:
+        for upstream, expected in [(401, 503), (403, 503), (429, 429), (422, 502),
+                                   (413, 502), (503, 503), (302, 502), (500, 502)]:
             post.return_value = self.response(upstream)
             error = self.assert_error(expected, ocr.extract_document, b"%PDF-sample")
             self.assertNotIn("test-private-token", error.detail)
@@ -61,21 +71,34 @@ class GraniteOCRTests(unittest.TestCase):
             caught = self.assert_error(status, ocr.extract_document, b"%PDF-sample")
             self.assertNotIn("secret", caught.detail)
 
+    @patch.object(ocr.requests, "get")
     @patch.object(ocr.requests, "post")
-    def test_malformed_empty_and_partial_results(self, post):
+    def test_malformed_empty_and_partial_results(self, post, get):
         response = self.response(); post.return_value = response
         response.json.side_effect = ValueError("bad json")
         self.assert_error(502, ocr.extract_document, b"%PDF-sample")
         response.json.side_effect = None
+        response.json.return_value = {"event_id": "../not-an-id"}
+        self.assert_error(502, ocr.extract_document, b"%PDF-sample")
+        response.json.return_value = {"event_id": "synthetic-event"}
         for key, value in [("text", 12), ("markdown", None), ("page_count", True),
                            ("truncated", "false"), ("model", "another-model")]:
-            response.json.return_value = {**self.result, key: value}
+            get.return_value = self.stream(result={**self.result, key: value})
             self.assert_error(502, ocr.extract_document, b"%PDF-sample")
-        response.json.return_value = {**self.result, "text": "  "}
+        get.return_value = self.stream(result={**self.result, "text": "  "})
         self.assert_error(422, ocr.extract_document, b"%PDF-sample")
-        response.json.return_value = {**self.result, "truncated": True}
+        get.return_value = self.stream(result={**self.result, "truncated": True})
         self.assertTrue(ocr.extract_document(b"%PDF-sample")["truncated"])
         self.assert_error(422, ocr.extract_text_from_image, b"%PDF-sample")
+
+    @patch.object(ocr.requests, "get")
+    @patch.object(ocr.requests, "post")
+    def test_zero_gpu_queue_errors_are_sanitized(self, post, get):
+        post.return_value = self.response()
+        stream = self.stream()
+        get.return_value = stream
+        stream.iter_lines.return_value = ["event: error", "data: ZeroGPU quota exceeded: private details"]
+        self.assert_error(429, ocr.extract_document, b"%PDF-sample")
 
     @patch.object(ocr.requests, "post")
     def test_no_credentials_no_request_and_no_fallback(self, post):

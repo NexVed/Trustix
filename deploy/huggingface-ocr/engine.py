@@ -77,11 +77,13 @@ class GraniteEngine:
         from transformers import AutoModelForVision2Seq, AutoProcessor
 
         torch.set_num_threads(min(4, max(1, int(os.getenv("OMP_NUM_THREADS", "2")))))
+        self.device = os.getenv("OCR_DEVICE", "cuda")
         self.processor = AutoProcessor.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
         self.model = AutoModelForVision2Seq.from_pretrained(
-            MODEL_ID, revision=MODEL_REVISION, torch_dtype=torch.float32,
+            MODEL_ID, revision=MODEL_REVISION,
+            torch_dtype=torch.bfloat16 if self.device == "cuda" else torch.float32,
             _attn_implementation="sdpa",
-        ).to("cpu").eval()
+        ).to(self.device).eval()
         self.ready = True
 
     def convert(self, data: bytes) -> dict:
@@ -104,13 +106,13 @@ class GraniteEngine:
             end_tokens = set(end_tokens if isinstance(end_tokens, list) else [end_tokens])
             for index, image in enumerate(page_images(data, self.max_pages)):
                 images.append(image)
-                inputs = self.processor(text=prompt, images=[image], return_tensors="pt")
+                inputs = self.processor(text=prompt, images=[image], return_tensors="pt").to(self.device)
                 with torch.inference_mode():
                     output = self.model.generate(
                         **inputs, do_sample=False, max_new_tokens=self.max_tokens,
                         max_time=self.page_timeout,
                     )
-                generated = output[:, inputs.input_ids.shape[1]:]
+                generated = output[:, inputs.input_ids.shape[1]:].cpu()
                 if generated.shape[1] == 0 or int(generated[0, -1]) not in end_tokens:
                     incomplete.append(index + 1)
                 doctags.append(self.processor.batch_decode(generated, skip_special_tokens=False)[0].lstrip())

@@ -1,5 +1,9 @@
 from pathlib import Path
 from urllib.parse import urlsplit
+import base64
+import json
+import re
+import time
 import requests
 from fastapi import HTTPException
 from difflib import SequenceMatcher
@@ -71,38 +75,7 @@ def extract_document(file_bytes: bytes) -> dict:
         return _legacy_extract(files, extension)
     if settings.ocr_provider != "granite_docling":
         raise HTTPException(503, "Unsupported OCR provider configured.")
-    url = _space_url()
-    token = _hf_token()
-    if not token or not settings.hf_ocr_api_key:
-        raise HTTPException(503, "OCR is not configured. Set the backend Hugging Face credentials.")
-    try:
-        response = requests.post(
-            f"{url}/ocr", files=files,
-            headers={"Authorization": f"Bearer {token}", "X-Trustix-OCR-Key": settings.hf_ocr_api_key},
-            timeout=(15, max(30, min(settings.hf_ocr_timeout_seconds, 900))),
-            allow_redirects=False,
-        )
-    except requests.Timeout:
-        raise HTTPException(504, "OCR timed out. The Space may still be starting; retry with a smaller document.")
-    except requests.RequestException:
-        raise HTTPException(503, "The OCR Space is unavailable. Please retry shortly.")
-    if response.status_code in (401, 403):
-        raise HTTPException(503, "OCR credentials were rejected. Check the backend Space token and API key.")
-    if response.status_code == 429:
-        raise HTTPException(429, "The OCR service is busy. Please retry shortly.")
-    if response.status_code in (400, 413, 415, 422):
-        messages = {400: "The document is empty or invalid.", 413: "Maximum document size is 10 MB.",
-                    415: "Choose a PDF, PNG, or JPEG document.",
-                    422: "Unable to read this document. Use an unlocked PDF of at most 5 pages, or a clear image."}
-        raise HTTPException(response.status_code, messages[response.status_code])
-    if response.status_code in (502, 503, 504):
-        raise HTTPException(503, "The OCR Space is starting or unavailable. Please retry shortly.")
-    if response.status_code != 200:
-        raise HTTPException(502, "The OCR Space returned an unexpected response.")
-    try:
-        result = response.json()
-    except ValueError:
-        raise HTTPException(502, "The OCR Space returned an invalid response.")
+    result = _gradio_extract(file_bytes)
     if (not isinstance(result, dict) or not isinstance(result.get("text"), str)
             or not isinstance(result.get("markdown"), str)
             or type(result.get("page_count")) is not int or not 1 <= result["page_count"] <= 10
@@ -112,6 +85,65 @@ def extract_document(file_bytes: bytes) -> dict:
         raise HTTPException(422, "No readable text was found in this document.")
     return {key: result.get(key) for key in (
         "text", "markdown", "page_count", "model", "revision", "processing_seconds", "truncated", "incomplete_pages")}
+
+
+def _gradio_extract(file_bytes: bytes) -> dict:
+    url = _space_url()
+    token = _hf_token()
+    if not token or not settings.hf_ocr_api_key:
+        raise HTTPException(503, "OCR is not configured. Set the backend Hugging Face credentials.")
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "Cache-Control": "no-store"}
+    endpoint = f"{url}/gradio_api/call/ocr"
+    timeout = max(30, min(settings.hf_ocr_timeout_seconds, 900))
+    try:
+        response = requests.post(endpoint,
+            json={"data": [base64.b64encode(file_bytes).decode("ascii"), settings.hf_ocr_api_key]},
+            headers=headers, timeout=(15, 90), allow_redirects=False)
+        _check_space_response(response)
+        event_id = response.json().get("event_id")
+        if not isinstance(event_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,120}", event_id):
+            raise HTTPException(502, "The OCR Space returned an invalid queue reference.")
+        started = time.monotonic()
+        with requests.get(f"{endpoint}/{event_id}", headers=headers, stream=True,
+                          timeout=(15, 30), allow_redirects=False) as stream:
+            _check_space_response(stream)
+            event = ""
+            for line in stream.iter_lines(decode_unicode=True):
+                if time.monotonic() - started > timeout:
+                    raise HTTPException(504, "OCR timed out while waiting for ZeroGPU.")
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="replace")
+                if line.startswith("event: "):
+                    event = line[7:]
+                elif line.startswith("data: "):
+                    if event == "error":
+                        raise HTTPException(429 if "quota" in line.lower() else 503,
+                                            "OCR GPU quota or queue is unavailable. Please retry later.")
+                    if event == "complete":
+                        payload = json.loads(line[6:])
+                        if isinstance(payload, list) and len(payload) == 1 and isinstance(payload[0], dict):
+                            return payload[0]
+                        raise HTTPException(502, "The OCR Space returned an invalid extraction result.")
+                elif not line:
+                    event = ""
+    except requests.Timeout:
+        raise HTTPException(504, "OCR timed out. The Space may still be starting; retry with a smaller document.") from None
+    except requests.RequestException:
+        raise HTTPException(503, "The OCR Space is unavailable. Please retry shortly.") from None
+    except (ValueError, TypeError):
+        raise HTTPException(502, "The OCR Space returned an invalid response.") from None
+    raise HTTPException(502, "The OCR Space closed the extraction request without a result.")
+
+
+def _check_space_response(response):
+    if response.status_code in (401, 403):
+        raise HTTPException(503, "OCR credentials were rejected. Check the backend Space token.")
+    if response.status_code == 429:
+        raise HTTPException(429, "The OCR service is busy. Please retry shortly.")
+    if response.status_code in (502, 503, 504):
+        raise HTTPException(503, "The OCR Space is starting or unavailable. Please retry shortly.")
+    if response.status_code != 200:
+        raise HTTPException(502, "The OCR Space returned an unexpected response.")
 
 
 def _legacy_extract(files: dict, extension: str) -> dict:

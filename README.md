@@ -100,7 +100,7 @@ Documents sent for OCR are processed on the configured external provider.
 | Identity and data | Supabase Auth, PostgreSQL, PostgREST |
 | Storage | Google Cloud Storage |
 | Cryptography | cryptography/AES-GCM, bcrypt, PyCryptodome, JWT libraries |
-| OCR | `ibm-granite/granite-docling-258M`, private Docker Space |
+| OCR | `ibm-granite/granite-docling-258M`, private Gradio ZeroGPU Space |
 | Wallets | ethers, eth-account |
 | Export | jsPDF, jsPDF-AutoTable, bundled Noto Sans font |
 | Tests | Vitest, Testing Library, Python unittest |
@@ -331,19 +331,19 @@ endpoint implementation before assuming the two token types are interchangeable.
 
 ## OCR Service
 
-Granite OCR is a separate private Docker Space, not a model installed inside
+Granite OCR is a separate private Gradio ZeroGPU Space, not a model installed inside
 FastAPI. Deploying the main application does not deploy or activate this service.
 
 - Model: `ibm-granite/granite-docling-258M`.
 - Accepted documents: PDF, PNG, JPEG; maximum 10 MiB and five PDF pages in the Space.
 - Output: plain text, Markdown, page count, model revision, timing, and truncation metadata.
-- Concurrency: one inference request at a time; busy requests receive HTTP 429.
+- Concurrency: one queued inference at a time; ZeroGPU quota and queue limits apply.
 - Credentials: Hugging Face bearer token plus a separate OCR API key, backend only.
 - Incomplete extraction is flagged; existing verification callers reject it.
 - OCR extraction does not prove identity, death, ownership, or authenticity.
 
-The service code does not persist extracted content, but uploads are processed
-on Hugging Face infrastructure and may temporarily spool during request parsing.
+The application does not deliberately persist extracted content, but Gradio's
+queue may temporarily retain inputs and results on Hugging Face infrastructure.
 Use synthetic documents until privacy and deployment requirements are reviewed.
 
 See [deployment instructions](deploy/README.md) and the

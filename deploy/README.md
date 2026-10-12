@@ -1,6 +1,6 @@
-# Private Granite Docling OCR
+# Private Granite Docling OCR on ZeroGPU
 
-The `huggingface-ocr` directory is a standalone Docker Space for the pinned
+The `huggingface-ocr` directory is a standalone Gradio ZeroGPU Space for the pinned
 `ibm-granite/granite-docling-258M` model. The Trustix backend proxies requests;
 the browser never receives Hugging Face credentials. Model dependencies are
 installed in the Space, not in the Trustix backend.
@@ -17,10 +17,10 @@ deploy\.venv\Scripts\python.exe -m pip install huggingface_hub python-dotenv
 deploy\.venv\Scripts\python.exe deploy\deploy_ocr_space.py --repo-id YOUR_ACCOUNT/trustix-granite-docling-ocr --configure-backend
 ```
 
-The helper creates a **private** Docker Space on `cpu-basic`, adds an independent
-`OCR_API_KEY` secret and uploads only the five service files. It never requests
-paid hardware. Hugging Face may require an eligible subscription even for the
-CPU tier; deployment must stop on HTTP 402, not upgrade automatically.
+The helper creates a **private** Gradio Space on ZeroGPU, adds an independent
+`OCR_API_KEY` secret and uploads only the four service files. It never requests
+paid hardware. Free personal accounts need a verified email, age over 30 days,
+and an available ZeroGPU Space slot.
 An existing repository is not overwritten unless `--update` is supplied and
 its README identifies it as this Trustix OCR service.
 
@@ -36,12 +36,12 @@ token after deployment. Restart the backend after changing its environment.
 - `POST /verification/ocr`: authenticated multipart `file`, returns text, Markdown,
   page count, model revision, timing and truncation information.
 - PDF, PNG and JPEG are checked by file signature; maximum 10 MiB and 5 PDF pages.
-- The Space processes one request at a time and returns 429 when busy.
+- The Space queues one inference at a time; ZeroGPU queue and daily quota limits apply.
 - The client does not automatically retry uploads. Sleeping Spaces can take minutes to start.
-- Cancelling the browser request stops waiting; model inference already running in the Space
-  finishes or reaches its page timeout before another extraction can start.
-- The OCR endpoint does not persist document contents. Uploads are closed after processing;
-  multipart parsing may temporarily spool uploads to disk. No content is included in application logs.
+- Cancelling the browser request stops waiting; work already queued or running
+  in the Space may continue until completion or its GPU duration limit.
+- The OCR endpoint does not deliberately persist document contents. Gradio's
+  queue may temporarily retain inputs and results. No content is included in application logs.
 - Extraction output can be inaccurate. It is not evidence of identity or authenticity.
   Existing legacy verification rules are not strengthened by changing OCR models.
 - Incomplete output is shown with a warning; existing verification callers reject it.
@@ -55,6 +55,6 @@ cd backend
 venv\Scripts\python.exe -m unittest discover -s tests -p test_granite_ocr.py -v
 ```
 
-Check Space runtime is `RUNNING`, then send a synthetic, non-sensitive PNG using
-the HF bearer token and `X-Trustix-OCR-Key`. Confirm `/health` reports the pinned
-model and `/ocr` returns the visible sample words before sending real documents.
+Check Space runtime is `RUNNING`, then send a synthetic, non-sensitive PNG via
+the authenticated Trustix `/verification/ocr` endpoint. Confirm the returned
+model ID and visible sample words before sending real documents.

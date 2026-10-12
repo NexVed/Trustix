@@ -1,4 +1,4 @@
-"""Create a private CPU Space and configure the local backend without exposing credentials."""
+"""Create a private Gradio ZeroGPU Space and configure the local backend."""
 import argparse
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-id", required=True, help="Confirmed owner/trustix-granite-docling-ocr")
     parser.add_argument("--configure-backend", action="store_true")
-    parser.add_argument("--update", action="store_true", help="Update an existing Trustix OCR Space; does not create a new one")
+    parser.add_argument("--update", action="store_true", help="Update an existing Trustix ZeroGPU Space")
     args = parser.parse_args()
     from huggingface_hub import HfApi
     from huggingface_hub.utils import HfHubHTTPError
@@ -29,18 +29,23 @@ def main():
     try:
         if args.update:
             info = api.space_info(args.repo_id)
-            if not info.private or info.sdk != "docker":
-                parser.error("Refusing to update a public or non-Docker Space.")
+            if not info.private or info.sdk != "gradio":
+                parser.error("Refusing to update a public or non-Gradio Space.")
             from huggingface_hub import hf_hub_download
             readme = Path(hf_hub_download(args.repo_id, "README.md", repo_type="space", token=token)).read_text()
             if "title: Trustix Granite Docling OCR" not in readme:
-                parser.error("Refusing to overwrite an unrelated Space.")
+                files = sorted(api.list_repo_files(args.repo_id, repo_type="space"))
+                is_empty_space = (files == [".gitattributes", "README.md"]
+                                  and getattr(info.runtime, "stage", None) == "NO_APP_FILE"
+                                  and getattr(info.runtime, "requested_hardware", None) == "zero-a10g")
+                if not is_empty_space:
+                    parser.error("Refusing to overwrite an unrelated Space.")
         else:
-            api.create_repo(args.repo_id, repo_type="space", space_sdk="docker", private=True,
-                            space_hardware="cpu-basic", exist_ok=False)
+            api.create_repo(args.repo_id, repo_type="space", space_sdk="gradio", private=True,
+                            space_hardware="zero-a10g", exist_ok=False)
         api.add_space_secret(args.repo_id, "OCR_API_KEY", api_key)
         api.upload_folder(repo_id=args.repo_id, repo_type="space", folder_path=str(root / "huggingface-ocr"),
-            allow_patterns=["app.py", "engine.py", "Dockerfile", "requirements.txt", "README.md"],
+            allow_patterns=["zerogpu_app.py", "engine.py", "requirements.txt", "README.md"],
             commit_message="Deploy Trustix Granite Docling OCR service")
         info = api.space_info(args.repo_id)
         host = getattr(info, "host", None)
@@ -60,7 +65,7 @@ def main():
             for key, value in values.items():
                 set_key(str(env), key, value)
         print(f"Space: https://huggingface.co/spaces/{args.repo_id}")
-        print("Private CPU deployment submitted. Check build/runtime before using OCR.")
+        print("Private ZeroGPU deployment submitted. Check build/runtime before using OCR.")
         if args.configure_backend:
             print("Backend environment configured. Restart the backend after the Space is ready.")
         else:
@@ -68,8 +73,8 @@ def main():
     except HfHubHTTPError as error:
         status = error.response.status_code if error.response is not None else "unknown"
         if status == 402:
-            raise SystemExit("Hugging Face requires an eligible PRO subscription for a personal Docker Space on cpu-basic (HTTP 402). Enable PRO on the confirmed account, then retry. No paid hardware or subscription was requested.") from None
-        raise SystemExit(f"Hugging Face deployment failed (HTTP {status}). No paid hardware was requested. Check permissions or subscription eligibility.") from None
+            raise SystemExit("Hugging Face declined ZeroGPU hosting for this account (HTTP 402). Verify email, account age, or Space quota. No paid hardware was requested.") from None
+        raise SystemExit(f"Hugging Face deployment failed (HTTP {status}). Check account eligibility and Space permissions.") from None
 
 
 if __name__ == "__main__":
