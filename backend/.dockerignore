@@ -1,0 +1,13 @@
+**
+!Dockerfile
+!.dockerignore
+!requirements.txt
+!app/
+!app/**
+app/**/__pycache__/
+app/**/*.py[cod]
+app/**/.env*
+app/**/*.pem
+app/**/*.key
+app/**/credentials*.json
+app/**/gen-lang-client-*.json

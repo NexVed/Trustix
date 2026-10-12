@@ -2,6 +2,8 @@
 
 Trustix is a Next.js application for secure digital inheritance, encrypted asset vaults, nominee management, and document verification.
 
+For container builds and running both services together, see [Docker setup](../DOCKER.md).
+
 ## Requirements
 
 - Node.js 18.18 or later

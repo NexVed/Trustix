@@ -2,6 +2,8 @@
 
 This is the FASTAPI backend for TRUSTIX, an AI-powered digital inheritance vault.
 
+For container builds and running both services together, see [Docker setup](../DOCKER.md).
+
 ## Environment Variables
 
 See `.env.example` for required variables:
