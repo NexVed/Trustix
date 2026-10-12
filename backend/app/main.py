@@ -8,6 +8,7 @@ from app.config import settings
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.routes import zk_vault
+from app.routes import health
 
 app = FastAPI(
     title="TRUSTIX Backend API MVP",
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 # Include endpoint routers
+app.include_router(health.router)
 app.include_router(auth_routes.router)
 app.include_router(vault.router)
 app.include_router(nominee.router)

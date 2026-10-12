@@ -46,6 +46,48 @@ uvicorn app.main:app --host 0.0.0.0 --port 10000 --reload
    - `GOOGLE_APPLICATION_CREDENTIALS` (If your service account JSON cannot be a file on Render, you may need to map the JSON contents to a variable or use a Render Secret File that matches this path.)
    - `FRONTEND_URL`
 
+## Render Keep Alive
+
+`GET /health` (also `HEAD /health`) is a public, non-cached process-liveness API.
+It returns `{"status":"ok","service":"trustix-api"}` without database or OCR
+calls. Configure Render's **Health Check Path** as `/health`. This is not a
+database/storage readiness check, and Render's own health checks do not replace
+external keep-alive traffic.
+
+The frontend makes a health request on startup, every five minutes while it is
+open, and when connectivity or the visible tab returns. Requests omit credentials,
+allow up to 90 seconds for cold starts, retry at most twice, and stop on unmount.
+Set the deployed frontend's `NEXT_PUBLIC_API_URL` to your Render backend base URL
+and rebuild the frontend. Ensure `FRONTEND_URL` on Render matches the frontend
+origin for CORS.
+
+For checks when the browser is closed, `.github/workflows/render-keep-alive.yml`
+uses GitHub Actions every ten minutes, with a manual **Run workflow** option:
+
+1. Deploy the new `/health` endpoint to Render.
+2. Set the GitHub repository **Actions variable** `RENDER_BACKEND_URL` to the
+   backend's HTTPS base URL, without `/health`, credentials, or query parameters.
+3. Publish the workflow on the repository's default branch and enable Actions.
+4. Run **Render Backend Keep Alive** manually once and confirm it succeeds.
+
+Without `RENDER_BACKEND_URL`, the workflow intentionally skips its job. Scheduled
+runs can be delayed or dropped; public-repository schedules can be disabled after
+60 days without repository activity. These calls reduce idle sleep, not crashes,
+maintenance, deploy interruptions, or exhausted instance-hour quotas. Keeping a
+service awake consumes Render instance hours and GitHub Actions usage. A paid Render
+service instance removes free-tier idle spin-down; it still does not guarantee
+zero downtime. No billing or plan changes are made by this implementation.
+
+References: [Render free-tier limits](https://render.com/docs/free),
+[Render health checks](https://render.com/docs/health-checks),
+[GitHub scheduled workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+Example:
+
+```bash
+curl --fail --max-time 90 https://YOUR_SERVICE.onrender.com/health
+```
+
 ## API Testing with cURL
 
 Make sure to replace `YOUR_SUPABASE_JWT` with a valid JWT retrieved from your Superbase Auth frontend test.
