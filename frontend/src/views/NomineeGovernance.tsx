@@ -41,6 +41,8 @@ const timeline = [
   { date: "Day 180", label: "Trigger Activation", active: false },
 ];
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function NomineeGovernance() {
   const { vaultId, token: vaultToken } = useVault();
   const { session } = useAuth();
@@ -63,8 +65,6 @@ export default function NomineeGovernance() {
   const [keyCopied, setKeyCopied] = useState(false);
   const [keyRevealed, setKeyRevealed] = useState(false);
   const [keyNomineeName, setKeyNomineeName] = useState("");
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   // Fetch nominees
   useEffect(() => {

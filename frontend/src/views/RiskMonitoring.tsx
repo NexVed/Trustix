@@ -29,6 +29,8 @@ function getAlertIcon(severity: string) {
   return Zap;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function RiskMonitoring() {
   const { session } = useAuth();
   const { vaultId, token: vaultToken } = useVault();
@@ -41,8 +43,6 @@ export default function RiskMonitoring() {
   const [today, setToday] = useState<string | null>(null);
 
   useEffect(() => { setToday(new Date().toISOString().slice(0, 10)); }, []);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   useEffect(() => {
     const fetchEvents = async () => {

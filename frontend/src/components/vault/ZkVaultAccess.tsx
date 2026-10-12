@@ -32,11 +32,10 @@ export default function ZkVaultAccess({ onUnlocked }: { onUnlocked: (key: string
             }
 
             toast({ title: 'ZK Vault Unlocked', description: 'Your secure payload has been decrypted in memory.' });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onUnlocked(keyInput);
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
-            toast({ title: 'Access Denied', description: err.message, variant: 'destructive' });
+            toast({ title: 'Access Denied', description: err instanceof Error ? err.message : 'Unable to unlock the vault.', variant: 'destructive' });
         } finally {
             setLoading(false);
         }

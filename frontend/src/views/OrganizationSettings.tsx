@@ -47,6 +47,8 @@ const defaults: Settings = {
   legal_inheritance: "",
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function OrganizationSettings() {
   const { session, user } = useAuth();
   const { toast } = useToast();
@@ -55,8 +57,6 @@ export default function OrganizationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   // Load settings on mount
   useEffect(() => {
@@ -76,7 +76,9 @@ export default function OrganizationSettings() {
             ...Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== null && v !== undefined)),
           }));
         }
-      } catch { }
+      } catch (err) {
+        console.error("Failed to load organization settings:", err);
+      }
       finally {
         setLoading(false);
       }
@@ -92,7 +94,7 @@ export default function OrganizationSettings() {
     }
   }, [user?.email, settings.contact_email]);
 
-  const update = (key: keyof Settings, value: any) => {
+  const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
   };
@@ -123,7 +125,7 @@ export default function OrganizationSettings() {
     } finally {
       setSaving(false);
     }
-  }, [settings, session?.access_token]);
+  }, [settings, session?.access_token, toast]);
 
   const SaveButton = () => (
     <Button size="sm" onClick={handleSave} disabled={saving || !session} className="gap-2">

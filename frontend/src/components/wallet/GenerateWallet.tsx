@@ -59,11 +59,11 @@ export const GenerateWallet: React.FC<GenerateWalletProps> = ({ apiBaseUrl = "ht
                 description: "A new Ethereum wallet was generated and encrypted securely in the vault.",
             });
 
-        } catch (error: any) {
+        } catch (error) {
             console.error("Wallet generation error:", error);
             toast({
                 title: "Generation Failed",
-                description: error.message || "An unknown error occurred while securing the wallet.",
+                description: error instanceof Error ? error.message : "An unknown error occurred while securing the wallet.",
                 variant: "destructive"
             });
         } finally {

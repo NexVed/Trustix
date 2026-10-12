@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, MetricStrip, PageHeader, PanelHeading } from "@/components/WorkspacePage";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ const actionColors: Record<string, string> = {
   "Document Uploaded": "bg-primary/10 text-primary",
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function ActivityLedger() {
   const { session } = useAuth();
   const { vaultId, token: vaultToken } = useVault();
@@ -46,9 +48,7 @@ export default function ActivityLedger() {
   const [error, setError] = useState("");
   const pageSize = 15;
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -78,11 +78,11 @@ export default function ActivityLedger() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.access_token, vaultToken, vaultId, page, actionFilter]);
 
   useEffect(() => {
     fetchActivities();
-  }, [session?.access_token, vaultToken, vaultId, page, actionFilter]);
+  }, [fetchActivities]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const startIdx = (page - 1) * pageSize + 1;

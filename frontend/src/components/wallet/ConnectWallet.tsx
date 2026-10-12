@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import type { Eip1193Provider } from 'ethers';
 
 // Important: Extend the Window interface to recognize the `ethereum` object injected by MetaMask
 declare global {
     interface Window {
-        ethereum?: any;
+        ethereum?: Eip1193Provider & {
+            on?: (event: string, listener: (accounts: string[]) => void) => void;
+            removeListener?: (event: string, listener: (accounts: string[]) => void) => void;
+        };
     }
 }
 
@@ -91,11 +95,11 @@ export const ConnectWallet: React.FC = () => {
                 // At this point, you could also send the public address to the backend 
                 // to link the non-custodial wallet to the user's profile.
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("MetaMask connection error:", error);
             toast({
                 title: "Connection Failed",
-                description: error.message || "Failed to connect to MetaMask.",
+                description: error instanceof Error ? error.message : "Failed to connect to MetaMask.",
                 variant: "destructive"
             });
         } finally {

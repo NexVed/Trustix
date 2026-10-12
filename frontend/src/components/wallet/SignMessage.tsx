@@ -61,11 +61,11 @@ export const SignMessage: React.FC<SignMessageProps> = ({ apiBaseUrl = "http://l
                 description: "Your cryptographically secure signature was generated successfully.",
             });
 
-        } catch (error: any) {
+        } catch (error) {
             console.error("Signing error:", error);
             toast({
                 title: "Signing Failed",
-                description: error.message || "User denied message signature.",
+                description: error instanceof Error ? error.message : "User denied message signature.",
                 variant: "destructive"
             });
         } finally {
@@ -103,11 +103,11 @@ export const SignMessage: React.FC<SignMessageProps> = ({ apiBaseUrl = "http://l
                 description: "The backend confirmed the signature matches your stored custodial wallet.",
             });
 
-        } catch (error: any) {
+        } catch (error) {
             setVerificationResult('failed');
             toast({
                 title: "Verification Failed",
-                description: error.message,
+                description: error instanceof Error ? error.message : "Verification failed.",
                 variant: "destructive"
             });
         } finally {

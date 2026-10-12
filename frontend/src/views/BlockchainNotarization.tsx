@@ -7,13 +7,6 @@ import { Link2, Wallet, Globe, CheckCircle2, Clock, ExternalLink, FileCheck, Shi
 import { Skeleton } from "@/components/ui/skeleton";
 import { ethers, BrowserProvider } from "ethers";
 
-// Extend Window for MetaMask
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
 interface WalletInfo {
   address: string;
   balance: string;
@@ -89,9 +82,9 @@ export default function BlockchainNotarization() {
       // Fetch recent transactions from Etherscan-compatible API
       setLoadingTxns(true);
       await fetchTransactions(address, Number(network.chainId));
-    } catch (err: any) {
+    } catch (err) {
       console.error("Wallet connection error:", err);
-      setError(err.message || "Failed to connect wallet.");
+      setError(err instanceof Error ? err.message : "Failed to connect wallet.");
     } finally {
       setConnecting(false);
     }
@@ -122,7 +115,7 @@ export default function BlockchainNotarization() {
       if (response.ok) {
         const data = await response.json();
         if (data.status === "1" && Array.isArray(data.result)) {
-          const txns: Transaction[] = data.result.map((tx: any) => ({
+          const txns: Transaction[] = data.result.map((tx: Record<string, string>) => ({
             hash: tx.hash,
             from: tx.from,
             to: tx.to || "Contract Creation",
@@ -146,7 +139,8 @@ export default function BlockchainNotarization() {
 
   // Listen for account/chain changes
   useEffect(() => {
-    if (!window.ethereum) return;
+    const ethereum = window.ethereum;
+    if (!ethereum) return;
 
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
@@ -161,12 +155,12 @@ export default function BlockchainNotarization() {
       connectWallet();
     };
 
-    window.ethereum.on?.("accountsChanged", handleAccountsChanged);
-    window.ethereum.on?.("chainChanged", handleChainChanged);
+    ethereum.on?.("accountsChanged", handleAccountsChanged);
+    ethereum.on?.("chainChanged", handleChainChanged);
 
     return () => {
-      window.ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
-      window.ethereum.removeListener?.("chainChanged", handleChainChanged);
+      ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
+      ethereum.removeListener?.("chainChanged", handleChainChanged);
     };
   }, [connectWallet]);
 

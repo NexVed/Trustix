@@ -18,6 +18,8 @@ interface AuditEntry {
   type: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function ComplianceAudit() {
   const { session } = useAuth();
   const { toast } = useToast();
@@ -29,8 +31,6 @@ export default function ComplianceAudit() {
   const [error, setError] = useState("");
   const [gdprEnabled, setGdprEnabled] = useState(true);
   const [retentionPolicy, setRetentionPolicy] = useState("7years");
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   // Fetch real audit logs from user_activities
   useEffect(() => {
@@ -78,12 +78,14 @@ export default function ComplianceAudit() {
           if (data.gdpr_enabled !== undefined) setGdprEnabled(data.gdpr_enabled);
           if (data.retention_policy) setRetentionPolicy(data.retention_policy);
         }
-      } catch { }
+      } catch (err) {
+        console.error("Failed to load compliance settings:", err);
+      }
     };
     fetchSettings();
   }, [session?.access_token]);
 
-  const savePolicy = async (key: string, value: any) => {
+  const savePolicy = async (key: "gdpr_enabled" | "retention_policy", value: boolean | string) => {
     if (!session?.access_token) return;
     setSaving(true);
     try {
@@ -96,8 +98,8 @@ export default function ComplianceAudit() {
         body: JSON.stringify({ [key]: value }),
       });
       if (!response.ok) throw new Error("Could not save policy.");
-      if (key === "gdpr_enabled") setGdprEnabled(value);
-      if (key === "retention_policy") setRetentionPolicy(value);
+      if (key === "gdpr_enabled" && typeof value === "boolean") setGdprEnabled(value);
+      if (key === "retention_policy" && typeof value === "string") setRetentionPolicy(value);
       toast({ title: "Policy saved" });
     } catch { toast({ title: "Policy not saved", description: "Please try again.", variant: "destructive" }); }
     finally { setSaving(false); }
