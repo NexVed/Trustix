@@ -455,7 +455,6 @@ repository maintainer.
 
 ## License
 
-This repository currently has no root project license file. Do not assume an
-open-source license from a dependency or the OCR Space metadata. Third-party
-models, packages, and bundled assets retain their own licenses; the bundled
-Noto Sans font includes its [OFL license](frontend/public/fonts/OFL.txt).
+The original project code is available under the [MIT License](LICENSE).
+Third-party models, packages, and bundled assets retain their own licenses;
+the bundled Noto Sans font includes its [OFL license](frontend/public/fonts/OFL.txt).
